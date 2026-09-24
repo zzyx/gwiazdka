@@ -11,3 +11,5 @@ Issues, including the wayfinder map, live in GitHub Issues on `zzyx/gwiazdka`. S
 ### Domain docs
 
 Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+@AGENTS.md
