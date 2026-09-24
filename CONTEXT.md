@@ -20,6 +20,14 @@ _Avoid_: counting day, weekday
 A recurring daily routine on one child's own list, the same on every School day, worth one Star when approved.
 _Avoid_: chore, habit, duty
 
+**Check-off**:
+A child's claim that they did one Task on one School day. It waits for the parent's Approval and never expires; the child can make or undo it until 22:00 the next calendar day, unless the parent has already decided on it.
+_Avoid_: tick, submit, mark done
+
+**Approval**:
+The parent's decision on one Task on one School day: approved earns one Star, rejected earns none and shows the child it was not counted. Either way the child can no longer change that Task. The parent can approve a Task that has no Check-off, and can change any decision while the Contract is open.
+_Avoid_: accept, confirm, review
+
 **Weekly bonus**:
 Extra Stars the parent grants a child by hand, at most once per week, after judging that week. Its size is fixed by the Contract; it is never computed automatically.
 _Avoid_: streak, weekly reward
