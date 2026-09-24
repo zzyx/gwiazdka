@@ -5,7 +5,7 @@ A family motivation system: children earn stars for completing daily routines, a
 ## Language
 
 **Star**:
-The unit of reward a child earns for a completed, approved task. Shown to children as "gwiazdka".
+The unit of reward a child earns for a completed, approved task. Shown in the app as "gwiazdka", the one Polish word on its otherwise English screens.
 _Avoid_: gwiazdka (in code and docs), гвязка, звезда, point, coin
 
 **Join code**:
