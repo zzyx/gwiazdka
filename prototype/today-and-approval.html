@@ -57,6 +57,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 }
 @media (max-width:480px){
   body{padding-inline:8px}
+  .switcher .lbl small{display:none}
   .phone{border-width:0;border-radius:18px;height:700px;box-shadow:none}
   .screen{border-radius:18px}
 }
@@ -64,6 +65,9 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .switcher{position:fixed;left:50%;transform:translateX(-50%);bottom:0;margin-bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;align-items:center;gap:4px;background:var(--bar);color:var(--bar-ink);border-radius:999px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:calc(100% - 24px)}
 .switcher button{border:0;background:transparent;color:inherit;width:40px;height:40px;border-radius:50%;font-size:18px}
 .switcher button:hover{background:rgba(127,127,127,.25)}
+.scr-toggle{display:flex;background:rgba(127,127,127,.25);border-radius:999px;padding:3px;gap:2px;margin-right:2px}
+.switcher .scr-toggle button{width:auto;height:34px;padding:0 12px;border-radius:999px;font-size:14px;font-weight:700;opacity:.7}
+.switcher .scr-toggle button[aria-pressed="true"]{background:var(--bar-ink);color:var(--bar);opacity:1}
 .switcher .lbl{padding:0 10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .switcher .lbl small{opacity:.65;font-weight:500}
 .star{display:inline-block;width:1em;height:1em;vertical-align:-.12em}
@@ -327,7 +331,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
     <div>
       <h1>Today and approval screens</h1>
     </div>
-    <p>A rough, clickable prototype for the child's Today screen and the parent's approval screen. Each screen has three layouts. Switch between them with the bar at the bottom (or ← →). Everything responds: check off Tasks as the child, then switch to the parent and approve them. Children, Tasks and balances are sample data.</p>
+    <p>A rough, clickable prototype for the child's Today screen and the parent's approval screen. Each screen has three layouts. In the bar at the bottom, pick Child or Parent, then use the arrows (or ← →) to switch layouts. Everything responds: check off Tasks as the child, then switch to the parent and approve them. Children, Tasks and balances are sample data.</p>
     <div class="ctl" id="ctl"></div>
     <div class="judge">
       <h2>What to react to</h2>
@@ -347,6 +351,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   </div>
 </div>
 <div class="switcher" role="group" aria-label="Variant switcher">
+  <div class="scr-toggle" id="scrtoggle"></div>
   <button id="prev" aria-label="Previous variant">←</button>
   <div class="lbl" id="vlabel"></div>
   <button id="next" aria-label="Next variant">→</button>
@@ -751,6 +756,7 @@ function render(){
   scr.scrollTop = top;
   const [key,name] = VARIANTS[U.screen].find(x=>x[0]===v);
   document.getElementById('vlabel').innerHTML = `${U.screen==='child'?'Child':'Parent'} · ${key} <small>(${name})</small>`;
+  document.getElementById('scrtoggle').innerHTML = [['child','Child'],['parent','Parent']].map(([k,l])=>`<button data-scr="${k}" aria-pressed="${U.screen===k}">${l}</button>`).join('');
   renderCtl(); renderReadout();
   try { history.replaceState(null,'','#'+U.screen+'-'+v); } catch(e){}
   U.pop = null;
@@ -763,6 +769,11 @@ function cycle(dir){
   document.getElementById('screen').scrollTop = 0;
 }
 
+document.getElementById('scrtoggle').addEventListener('click', e => {
+  const b = e.target.closest('[data-scr]'); if (!b) return;
+  U.screen = b.dataset.scr; U.sheet = null; render();
+  document.getElementById('screen').scrollTop = 0;
+});
 document.getElementById('prev').onclick = () => cycle(-1);
 document.getElementById('next').onclick = () => cycle(1);
 document.addEventListener('keydown', e => {
