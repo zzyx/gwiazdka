@@ -5,8 +5,8 @@ A family motivation system: children earn stars for completing daily routines, a
 ## Language
 
 **Star**:
-The unit of reward a child earns for a completed, approved task. Shown to children as "gwiazdka".
-_Avoid_: gwiazdka (in code and docs), гвязка, звезда, point, coin
+The unit of reward a child earns for a completed, approved task. The app's screens are in English, so children see "Star" too.
+_Avoid_: gwiazdka (except in the app's name, Gwiazdki), гвязка, звезда, point, coin
 
 **Join code**:
 A short single-use code the parent issues so a child can sign in on their own device, entered inside the installed app.
