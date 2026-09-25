@@ -10,7 +10,7 @@ export function JoinCodeButton({ childId }: { childId: string }) {
 
   if (code) {
     return (
-      <p className="text-sm text-sky-900">
+      <p className="text-sm">
         Code: <span className="font-mono text-xl font-bold tracking-widest">
           {code.slice(0, 4)}-{code.slice(4)}
         </span>{" "}
@@ -23,9 +23,9 @@ export function JoinCodeButton({ childId }: { childId: string }) {
     <button
       disabled={pending}
       onClick={() => startTransition(async () => setCode(await issueJoinCode(childId)))}
-      className="self-start rounded-lg bg-yellow-400 px-3 py-1 text-sm font-bold text-sky-950 disabled:opacity-50"
+      className="self-start text-sm text-[#2563EB] underline disabled:opacity-50"
     >
-      Get a Join code
+      Connect a device (Join code)
     </button>
   );
 }

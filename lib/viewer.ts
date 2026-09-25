@@ -5,7 +5,7 @@ export type Child = { id: string; name: string };
 
 // Who is using the app: a parent, a child on their own device, or nobody yet.
 export type Viewer =
-  | { kind: "parent"; children: Child[] }
+  | { kind: "parent" }
   | { kind: "child"; child: Child }
   | { kind: "none" };
 
@@ -20,13 +20,7 @@ export async function getViewer(): Promise<Viewer> {
     .select("family_id")
     .eq("user_id", userId)
     .maybeSingle();
-  if (parent) {
-    const { data: children } = await supabase
-      .from("children")
-      .select("id, name")
-      .order("name");
-    return { kind: "parent", children: children ?? [] };
-  }
+  if (parent) return { kind: "parent" };
 
   const { data: child } = await supabase
     .from("children")
