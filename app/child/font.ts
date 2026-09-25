@@ -1,3 +1,3 @@
-import { Baloo_2 } from "next/font/google";
+import { Sora } from "next/font/google";
 
-export const baloo = Baloo_2({ subsets: ["latin", "latin-ext"], weight: ["600", "700", "800"] });
+export const sora = Sora({ subsets: ["latin", "latin-ext"], weight: ["400", "600", "700", "800"] });

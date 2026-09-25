@@ -13,6 +13,8 @@ export type BoardTask = { id: string; name: string; icon: string; state: TaskSta
 
 export type BoardDay = {
   day: string;
+  // How many Tasks the day has, and how many of them earned a Star.
+  tasks: number;
   stars: number;
   waiting: boolean;
   future: boolean;
@@ -80,6 +82,7 @@ export async function loadBoard(
     const states = tasksOn(day).map((t) => t.state);
     return {
       day,
+      tasks: states.length,
       stars: inContract(day) ? states.filter((s) => s === "approved").length : 0,
       waiting: states.includes("checked_off"),
       future: day > today,
