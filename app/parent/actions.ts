@@ -18,7 +18,7 @@ export async function decide(taskId: string, day: string, approved: boolean) {
   const { error } = await supabase
     .from("approvals")
     .upsert({ task_id: taskId, day, approved, decided_at: new Date().toISOString() });
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   if (error) throw error;
 }
 
@@ -28,6 +28,6 @@ export async function approveAll(taskIds: string[], day: string) {
   const { error } = await supabase
     .from("approvals")
     .insert(taskIds.map((task_id) => ({ task_id, day, approved: true })));
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   if (error) throw error;
 }

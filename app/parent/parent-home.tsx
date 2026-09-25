@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { InboxDay, InboxRow } from "@/lib/inbox";
 import { loadInbox, type ChildSection } from "@/lib/parent-inbox";
 import { createClient } from "@/lib/supabase/server";
@@ -25,6 +26,9 @@ export async function ParentHome() {
     <main className={`${figtree.className} mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 bg-[#F6F7F9] p-4 pt-[max(1rem,env(safe-area-inset-top))] text-[#1F2430]`}>
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Inbox</h1>
+        <Link href="/contracts" className="ml-auto mr-3 text-sm text-[#2563EB]">
+          Contracts
+        </Link>
         <span
           className={`rounded-full px-3 py-1 text-sm font-bold ${waiting ? "bg-[#2563EB] text-white" : "bg-[#E5E7EB] text-[#6B7280]"}`}
           aria-label={`${waiting} waiting`}
@@ -62,7 +66,12 @@ function ChildInboxSection({ section }: { section: ChildSection }) {
         )}
       </div>
       {!inbox ? (
-        <p className="rounded-xl bg-white p-4 text-sm text-[#6B7280]">No open contract.</p>
+        <p className="rounded-xl bg-white p-4 text-sm text-[#6B7280]">
+          No open Contract.{" "}
+          <Link href={`/contracts?child=${section.id}&sheet=create`} className="text-[#2563EB] underline">
+            Create one
+          </Link>
+        </p>
       ) : (
         <>
           {inbox.waitingDays.length === 0 && (
