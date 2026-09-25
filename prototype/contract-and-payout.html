@@ -1,0 +1,859 @@
+<title>Contract and Payout Prototype</title>
+<!--
+  PROTOTYPE, throwaway. Answers the ticket "What do the contract and payout screens look like?"
+  (zzyx/gwiazdka#13). Three structurally different layouts of the parent's Contract & Payout
+  screens, switchable with the floating bottom bar (or ← →). All three share one in-memory model
+  that follows the money rules settled in zzyx/gwiazdka#5. "Reset" reseeds it.
+  Styling follows the chosen parent screen ("Inbox by child", zzyx/gwiazdka#12).
+  Children, Tasks, dates, rates and balances are sample data.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+:root{
+  --bg:#EEF0F5; --panel:#FFFFFF; --ink:#1C2030; --muted:#5B6278; --line:#D9DDE7;
+  --accent:#2F5BEA; --chip:#E4E8F3; --bar:#141824; --bar-ink:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#12141B; --panel:#1C1F2A; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+    --accent:#8FA8FF; --chip:#262B3A; --bar:#F1F3F9; --bar-ink:#12141B;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#12141B; --panel:#1C1F2A; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+  --accent:#8FA8FF; --chip:#262B3A; --bar:#F1F3F9; --bar-ink:#12141B;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:Figtree,system-ui,-apple-system,sans-serif;font-size:14px;padding-inline:16px;padding-block:20px 96px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1040px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:32px;align-items:start}
+.side{display:flex;flex-direction:column;gap:20px;max-width:520px}
+.side h1{font-size:24px;line-height:1.2;margin:0;text-wrap:balance}
+.side p{margin:0;color:var(--muted);line-height:1.5}
+.ctl{display:flex;flex-direction:column;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ctl-row>span{width:84px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.seg{display:inline-flex;background:var(--chip);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:8px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.reset{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 12px;font-weight:600}
+.judge{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.judge h2{margin:0 0 8px;font-size:15px}
+.judge ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;line-height:1.45;color:var(--muted)}
+.judge b{color:var(--ink)}
+.readout{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;line-height:1.6}
+.readout b{color:var(--ink)}
+.phone-col{display:flex;flex-direction:column;gap:12px;align-items:center}
+.phone{width:390px;max-width:100%;height:760px;border-radius:44px;border:10px solid #0D0F16;background:#0D0F16;overflow:hidden;position:relative;box-shadow:0 20px 50px rgba(20,24,40,.25)}
+.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;border-radius:34px;background:#F6F7FA}
+.overlay{position:absolute;inset:0;border-radius:34px;overflow:hidden;pointer-events:none;z-index:20}
+.overlay>*{pointer-events:auto}
+.status{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font:600 14px Figtree,system-ui,sans-serif;position:sticky;top:0;z-index:5;background:#F6F7FA;color:#1F2430}
+@media (max-width:860px){
+  .wrap{grid-template-columns:1fr}
+  .phone-col{order:-1}
+  .side{max-width:none}
+}
+@media (max-width:480px){
+  body{padding-inline:8px}
+  .switcher .lbl small{display:none}
+  .phone{border-width:0;border-radius:18px;height:700px;box-shadow:none}
+  .screen,.overlay{border-radius:18px}
+}
+.switcher{position:fixed;left:50%;transform:translateX(-50%);bottom:0;margin-bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;align-items:center;gap:4px;background:var(--bar);color:var(--bar-ink);border-radius:999px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:calc(100% - 24px)}
+.switcher button{border:0;background:transparent;color:inherit;width:40px;height:40px;border-radius:50%;font-size:18px}
+.switcher button:hover{background:rgba(127,127,127,.25)}
+.switcher .lbl{padding:0 10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.switcher .lbl small{opacity:.65;font-weight:500}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ============ PARENT shared (from the chosen approval screen) ============ */
+.pX{background:#F6F7FA;min-height:100%;font-family:Figtree,system-ui,sans-serif;color:#1F2430;padding-bottom:28px;font-size:15px}
+.p-head{padding:4px 20px 14px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.p-head h2{margin:0;font-size:28px;line-height:1.1;font-weight:700}
+.p-head .sub{color:#667085;font-size:14px;margin-top:2px}
+.av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex:none}
+.av.sm{width:26px;height:26px;font-size:13px}
+.av.ola{background:#E0527A}.av.tymek{background:#2E9E8F}
+.pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700;white-space:nowrap}
+.pill.run{background:#DDF5E7;color:#16774A}
+.pill.ended{background:#FFF1D6;color:#9A5B00}
+.pill.soon{background:#EAF1FF;color:#2F5BEA}
+.pill.none{background:#EEF0F4;color:#667085}
+.pill.paid{background:#EEF0F4;color:#344054}
+.star{display:inline-block;width:1em;height:1em;vertical-align:-.12em}
+.link{border:0;background:transparent;color:#2F5BEA;font-weight:700;padding:4px 0;font-size:14px}
+.btn{border:0;border-radius:12px;padding:12px 14px;font-weight:700;font-size:15px}
+.btn.pri{background:#2F5BEA;color:#fff}
+.btn.sec{background:#EAF1FF;color:#2F5BEA}
+.btn.ghost{background:#F1F2F5;color:#1F2430}
+.btn.go{background:#16A34A;color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.ok,.no{border:0;width:40px;height:36px;border-radius:10px;font-size:16px;font-weight:800;display:grid;place-items:center}
+.ok{background:#DDF5E7;color:#16774A}
+.no{background:#FDE3E3;color:#B42318}
+.num{font-variant-numeric:tabular-nums}
+.fixed{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#98A2B3;border:1px solid #E4E7EE;border-radius:6px;padding:1px 5px;margin-left:6px}
+.warn{background:#FFF7E6;border:1px solid #F8DDA8;color:#7A4A00;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.4}
+.toast{position:absolute;left:16px;right:16px;bottom:18px;background:#1F2430;color:#fff;border-radius:14px;padding:12px 14px;font-weight:600;font-size:14px;animation:toast 2.6s ease forwards;z-index:30}
+@keyframes toast{0%{opacity:0;transform:translateY(8px)}10%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+.muted{color:#667085}
+.lbl-up{font-size:12px;font-weight:700;color:#667085;text-transform:uppercase;letter-spacing:.06em}
+
+/* form (shared fields) */
+.form{display:flex;flex-direction:column;gap:12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:13px;font-weight:700;color:#475467}
+.field .row{display:flex;align-items:center;gap:8px}
+.field input{font:inherit;font-size:16px;border:1px solid #D0D5DD;border-radius:10px;padding:9px 10px;background:#fff;color:#1F2430;width:100%;min-width:0}
+.field input[type=date]{min-height:42px}
+.field .suffix{white-space:nowrap;color:#667085;font-size:14px}
+.field .hint{font-size:12px;color:#667085}
+.field .val{font-size:16px;font-weight:600;padding:6px 0}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.tlist{border:1px solid #E4E7EE;border-radius:12px;background:#fff;overflow:hidden}
+.trow{display:flex;align-items:center;gap:10px;padding:7px 10px;border-bottom:1px solid #F2F3F6;font-size:15px}
+.trow:last-child{border-bottom:0}
+.trow .e{font-size:20px;width:26px;text-align:center}
+.trow .nm{flex:1;min-width:0}
+.trm{border:0;background:#F1F2F5;color:#667085;border-radius:8px;width:30px;height:30px}
+.errs{background:#FDE3E3;color:#B42318;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600;line-height:1.4}
+.preview{background:#F2F5FF;border-radius:12px;padding:10px 12px;font-size:13px;color:#344054;line-height:1.45}
+.preview b{color:#1F2430}
+
+/* pending day list (shared bits) */
+.pday{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #F2F3F6}
+.pday:last-child{border-bottom:0}
+.pday .nm{flex:1;min-width:0}
+.pday .nm b{display:block}
+.pday .nm small{color:#667085;font-size:13px}
+.pday .em{letter-spacing:2px}
+.allok{color:#16774A;font-weight:700;padding:8px 0}
+
+/* ============ A: child page with sheets ============ */
+.aTabs{display:flex;gap:6px;margin:0 16px 14px;background:#E9ECF2;border-radius:14px;padding:4px}
+.aTab{flex:1;border:0;background:transparent;border-radius:11px;padding:8px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;color:#667085}
+.aTab[aria-pressed="true"]{background:#fff;color:#1F2430;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.aTab .dot{width:8px;height:8px;border-radius:50%}
+.aCard{margin:0 12px;background:#fff;border:1px solid #E4E7EE;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.aCard .top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;color:#475467;font-weight:600}
+.aBal{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.aBal b{font-size:44px;line-height:1;font-weight:800;letter-spacing:-.02em}
+.aBal span{font-size:16px;font-weight:600;color:#475467}
+.aBal .zl{margin-left:auto;font-size:24px;font-weight:800;color:#16774A}
+.aSplit{font-size:13px;color:#667085;margin-top:-6px}
+.track{height:8px;border-radius:4px;background:#EEF0F4;overflow:hidden}
+.track i{display:block;height:100%;background:#2F5BEA;border-radius:4px}
+.aProg{font-size:13px;color:#667085;display:flex;justify-content:space-between;margin-top:-6px}
+.aFacts{margin:0;display:flex;flex-direction:column;border-top:1px solid #F2F3F6}
+.aFacts div{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #F2F3F6;font-size:14px}
+.aFacts dt{color:#667085}
+.aFacts dd{margin:0;font-weight:600}
+.aActs{display:grid;grid-template-columns:1fr 1.3fr;gap:8px}
+.aEmpty{margin:0 12px;background:#fff;border:1px dashed #C9CFDB;border-radius:18px;padding:22px 16px;display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}
+.aEmpty h3{margin:0;font-size:19px}
+.aEmpty p{margin:0;color:#667085;font-size:14px;line-height:1.45}
+.aEmpty .kidsees{background:#DCEFFF;color:#1E2A5A;border-radius:12px;padding:8px 12px;font-size:13px;font-weight:700}
+.aPastLbl{margin:22px 22px 8px}
+.aPast{margin:0 12px;background:#fff;border:1px solid #E4E7EE;border-radius:16px;overflow:hidden}
+.aPastRow{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;border-bottom:1px solid #F2F3F6;padding:12px 14px;text-align:left}
+.aPastRow:last-child{border-bottom:0}
+.aPastRow .nm{flex:1;min-width:0}
+.aPastRow .nm b{display:block;font-size:15px}
+.aPastRow .nm small{color:#667085;font-size:13px}
+.aPastRow .amt{font-weight:800;font-size:16px;color:#1F2430}
+.aPastDet{padding:4px 14px 14px;border-bottom:1px solid #F2F3F6;background:#FAFBFC}
+.aPastDet dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px}
+.aPastDet dt{color:#667085}
+.aPastDet dd{margin:0;font-weight:600;text-align:right}
+.sheet-bg{position:absolute;inset:0;background:rgba(15,18,30,.45);display:flex;align-items:flex-end}
+.sheet{background:#fff;width:100%;max-height:88%;overflow-y:auto;border-radius:24px 24px 0 0;padding:10px 18px 24px;display:flex;flex-direction:column;gap:12px;font-family:Figtree,system-ui,sans-serif;color:#1F2430;font-size:15px}
+.sheet .grab{width:40px;height:5px;border-radius:3px;background:#D0D5DD;align-self:center}
+.sheet h3{margin:0;font-size:21px}
+.sheet .sub{color:#667085;font-size:14px;margin-top:-8px}
+.sheet .btns{display:flex;flex-direction:column;gap:8px}
+.sheet .btns .btn{padding:14px}
+.bigamt{text-align:center;padding:8px 0}
+.bigamt b{display:block;font-size:44px;font-weight:800;letter-spacing:-.02em;color:#16774A}
+.bigamt span{color:#667085;font-size:14px}
+.facts2{margin:0;background:#F6F7FA;border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:14px}
+.facts2 dt{color:#667085}
+.facts2 dd{margin:0;text-align:right;font-weight:600}
+.donebig{font-size:48px;text-align:center;color:#16A34A;line-height:1}
+
+/* ============ B: timeline with pages ============ */
+.bKids{display:flex;gap:8px;padding:0 16px 10px}
+.bKid{border:1px solid #E4E7EE;background:#fff;border-radius:999px;padding:4px 12px 4px 4px;display:flex;align-items:center;gap:8px;font-weight:700}
+.bKid[aria-pressed="true"]{border-color:#2F5BEA;box-shadow:0 0 0 2px #2F5BEA inset}
+.bTL{position:relative;margin:6px 16px 0 16px;padding-left:34px}
+.bTL::before{content:"";position:absolute;left:13px;top:6px;bottom:6px;width:2px;background:#D9DDE7}
+.bNode{position:relative;margin-bottom:14px}
+.bNode .dotT{position:absolute;left:-34px;top:8px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#F6F7FA;font-size:14px}
+.bNode .dotT.today{background:#2F5BEA;color:#fff;font-size:11px;font-weight:800}
+.bNode .dotT.coin{background:#16A34A;color:#fff;font-weight:800;font-size:13px}
+.bNode .dotT.open{background:#fff;border:3px solid #2F5BEA}
+.bNode .dotT.ended{background:#fff;border:3px solid #F2A93B}
+.bNode .dotT.gap{background:#fff;border:2px dashed #98A2B3}
+.bToday{font-size:13px;font-weight:700;color:#2F5BEA;padding-top:13px}
+.bOpen{width:100%;text-align:left;border:0;background:#fff;border:1px solid #E4E7EE;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.bOpen .r1{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.bOpen .r1 b{font-size:17px}
+.bOpen .r2{display:flex;align-items:baseline;gap:10px}
+.bOpen .r2 b{font-size:30px;font-weight:800}
+.bOpen .r2 .zl{margin-left:auto;font-weight:800;font-size:20px;color:#16774A}
+.bOpen .more{color:#2F5BEA;font-weight:700;font-size:14px}
+.bGap{width:100%;text-align:left;border:2px dashed #C9CFDB;background:transparent;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:4px}
+.bGap b{font-size:16px}
+.bGap span{color:#667085;font-size:14px}
+.bGap .go{color:#2F5BEA;font-weight:700}
+.bPay{padding-top:10px}
+.bPay b{font-size:16px}
+.bPay small{display:block;color:#667085;font-size:13px}
+.bSeg{background:#fff;border:1px solid #E4E7EE;border-radius:14px;padding:10px 12px;font-size:14px;color:#475467;display:flex;flex-direction:column;gap:2px}
+.bSeg b{color:#1F2430}
+.bNav{display:flex;align-items:center;gap:6px;padding:0 10px 6px}
+.bNav button{border:0;background:transparent;color:#2F5BEA;font-weight:700;font-size:16px;padding:6px}
+.bNav h3{margin:0;flex:1;text-align:center;font-size:17px;padding-right:56px}
+.bBody{padding:4px 16px 110px;display:flex;flex-direction:column;gap:14px}
+.bHero{background:#fff;border:1px solid #E4E7EE;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.bHero .big{display:flex;align-items:baseline;gap:8px}
+.bHero .big b{font-size:40px;font-weight:800;line-height:1}
+.bHero .big .zl{margin-left:auto;font-size:24px;font-weight:800;color:#16774A}
+.bWeeks{background:#fff;border:1px solid #E4E7EE;border-radius:16px;overflow:hidden}
+.bWeek{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid #F2F3F6;font-size:14px}
+.bWeek:last-child{border-bottom:0}
+.bWeek small{display:block;color:#667085;font-size:12px}
+.bWeek .bon{font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.bon.y{background:#FFF1D6;color:#9A5B00}.bon.n{background:#EEF0F4;color:#98A2B3}
+.bDock{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #E4E7EE;padding:12px 16px 22px;display:flex;gap:8px}
+.bDock .btn{flex:1;padding:14px 10px}
+.bStep{display:flex;gap:6px;align-items:center}
+.bStep span{flex:1;text-align:center;font-size:12px;font-weight:700;color:#98A2B3;padding-top:8px;border-top:4px solid #E4E7EE}
+.bStep span.on{color:#2F5BEA;border-color:#2F5BEA}
+.bStep span.done{color:#16774A;border-color:#16A34A}
+.bPD{background:#fff;border:1px solid #E4E7EE;border-radius:16px;overflow:hidden}
+.bPD .h{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #F2F3F6}
+.bPD .t{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #F7F8FA;font-size:14px}
+.bPD .t:last-child{border-bottom:0}
+.bPD .t .e{font-size:20px;width:26px;text-align:center}
+.bPD .t .nm{flex:1}
+.bPD .t .acts{display:flex;gap:6px}
+.st{font-size:12px;font-weight:700}
+.st.approved{color:#16774A}.st.rejected{color:#B42318}.st.none{color:#98A2B3}.st.checked{color:#9A5B00}
+.bCalc{background:#fff;border:1px solid #E4E7EE;border-radius:16px;padding:14px;display:grid;grid-template-columns:1fr auto;gap:8px;font-size:15px}
+.bCalc .tot{border-top:1px solid #E4E7EE;padding-top:8px;font-weight:800;font-size:18px}
+.bSum{background:#fff;border:1px solid #E4E7EE;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+
+/* ============ C: payouts desk, inline ============ */
+.cOwed{margin:0 16px 16px;background:#1F2430;color:#fff;border-radius:20px;padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.cOwed .l{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.7}
+.cOwed b{font-size:36px;font-weight:800;letter-spacing:-.02em}
+.cOwed small{opacity:.75;font-size:13px}
+.cKid{margin:0 12px 12px;background:#fff;border:1px solid #E4E7EE;border-radius:18px;overflow:hidden}
+.cKid .h{display:flex;align-items:center;gap:10px;padding:14px 14px 8px}
+.cKid .h .nm{flex:1;min-width:0;font-weight:700;font-size:17px}
+.cKid .h .nm small{display:block;font-weight:500;color:#667085;font-size:13px}
+.cKid .h .nm .pill{white-space:normal}
+.cKid .h .zl{flex:none;text-align:right;font-weight:800;font-size:20px;color:#16774A}
+.cKid .h .zl small{display:block;font-size:12px;color:#667085;font-weight:600}
+.cMeter{display:flex;gap:2px;padding:0 14px 8px}
+.cMeter i{flex:1;height:14px;border-radius:3px;background:#EEF0F4}
+.cMeter i.f{background:#F2A93B}
+.cMeter i.b{background:#F7D58C}
+.cMeta{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0 14px 12px;font-size:13px;color:#667085}
+.cDates{border:0;background:transparent;color:#2F5BEA;font-weight:700;font-size:13px;padding:2px 0}
+.cActs{display:flex;gap:8px;padding:0 14px 14px}
+.cActs .btn{flex:1}
+.cIn{border-top:1px dashed #D0D5DD;background:#FAFBFC;padding:14px;display:flex;flex-direction:column;gap:10px}
+.rcpt{background:#fff;border:1px solid #E4E7EE;border-radius:4px;padding:14px 14px 16px;font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:13px;color:#1F2430;display:flex;flex-direction:column;gap:6px;position:relative;box-shadow:0 2px 0 #E4E7EE}
+.rcpt .t{text-align:center;font-weight:700;letter-spacing:.08em}
+.rcpt .ln{display:flex;justify-content:space-between;gap:10px}
+.rcpt .ln span:last-child{text-align:right}
+.rcpt hr{border:0;border-top:1px dashed #98A2B3;margin:4px 0;width:100%}
+.rcpt .tot{font-weight:700;font-size:16px}
+.rcpt .pend{color:#9A5B00}
+.rcpt .pend button{font-family:Figtree,system-ui,sans-serif;border:0;background:#FFF1D6;color:#9A5B00;border-radius:8px;padding:3px 8px;font-weight:700;font-size:12px}
+.stamp{position:absolute;right:14px;top:34px;transform:rotate(-12deg);border:3px solid #16A34A;color:#16A34A;font-weight:700;letter-spacing:.12em;padding:2px 10px;border-radius:6px;font-size:18px;opacity:.85}
+.cStmtLbl{margin:22px 22px 8px}
+.cStmt{margin:0 12px;background:#fff;border:1px solid #E4E7EE;border-radius:16px;overflow:hidden}
+.cStmt .yr{background:#F6F7FA;padding:6px 14px;font-size:12px;font-weight:700;color:#667085}
+.cStmt .r{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid #F2F3F6;font-size:14px}
+.cStmt .r:last-child{border-bottom:0}
+.cStmt .r small{display:block;color:#667085;font-size:12px}
+.cStmt .r .a{font-weight:800}
+</style>
+
+<div class="wrap">
+  <div class="side">
+    <div><h1>Contract and Payout screens</h1></div>
+    <p>A rough, clickable prototype of the parent's Contract and Payout screens, in three layouts. Use the arrows in the bottom bar (or ← →) to switch. All three share the same sample data: Ola has an open Contract with two days still waiting for approval; Tymek has no open Contract. Everything responds. To build a Contract, pick Tymek and tap “Create a Contract”: dates, Tasks, price per gwiazdka and Weekly bonus in one form. You can also edit Ola's Contract, close and pay it out, and start the next one. Children, dates, rates and balances are sample data.</p>
+    <div class="ctl" id="ctl"></div>
+    <div class="judge">
+      <h2>What to react to</h2>
+      <ol>
+        <li><b>Layout:</b> which one fits? A puts each child on their own page with pop-up sheets. B draws each child's Contracts as a timeline and opens full pages. C shows both children on one desk and does everything inline, with the payout as a receipt. Mixing is fine.</li>
+        <li><b>Building a Contract:</b> create one for Tymek. Is one form with dates, Tasks, price and bonus right? Tasks can still be changed while the Contract is open (tap Edit); price and bonus can't.</li>
+        <li><b>Close &amp; pay out:</b> close Ola's Contract. Is the pending-days warning clear, and is it right to approve from there?</li>
+        <li><b>The amount:</b> does it show enough (Stars from Tasks, Weekly bonuses, rate) before you confirm?</li>
+        <li><b>Start next contract:</b> it starts the next School day, with the same rate and bonus, until the end of that semester. Right defaults?</li>
+        <li><b>Create for Tymek:</b> the start date can't be in the past here (earliest is today). Is that right, or should a Contract be allowed to start earlier?</li>
+        <li><b>Closing early:</b> the Contract's end date becomes the closing day. Try it, then switch the moment to 1 February to see a Contract whose end date has passed but isn't paid out yet.</li>
+        <li><b>Past Contracts:</b> how much of each old Payout you want to see.</li>
+      </ol>
+    </div>
+    <div class="readout" id="readout"></div>
+  </div>
+  <div class="phone-col">
+    <div class="phone"><div class="screen" id="screen"></div><div class="overlay" id="overlay"></div></div>
+  </div>
+</div>
+<div class="switcher" role="group" aria-label="Variant switcher">
+  <button id="prev" aria-label="Previous variant">←</button>
+  <div class="lbl" id="vlabel"></div>
+  <button id="next" aria-label="Next variant">→</button>
+</div>
+
+<script>
+/* ---------- dates ---------- */
+const P = s => new Date(s+'T00:00:00Z');
+const iso = d => d.toISOString().slice(0,10);
+const add = (s,n) => { const d = P(s); d.setUTCDate(d.getUTCDate()+n); return iso(d); };
+const dow = s => P(s).getUTCDay();
+const isSchool = s => dow(s)>=1 && dow(s)<=5;
+const nextSchool = s => { let x = add(s,1); while (!isSchool(x)) x = add(x,1); return x; };
+const schoolDays = (a,b) => { const r=[]; for (let x=a; x<=b; x=add(x,1)) if (isSchool(x)) r.push(x); return r; };
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const fmt = s => { const d=P(s); return `${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
+const fmtS = s => { const d=P(s); return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}`; };
+const fmtD = s => `${WD[dow(s)]} ${fmtS(s)}`;
+const range = (a,b) => P(a).getUTCFullYear()===P(b).getUTCFullYear() ? `${fmtS(a)} – ${fmt(b)}` : `${fmt(a)} – ${fmt(b)}`;
+const monday = s => add(s, -((dow(s)+6)%7));
+
+/* Polish school semesters (approximate; winter break varies by region) */
+const SEMS = [['2025-09-01','2026-01-30'],['2026-02-02','2026-06-26'],['2026-09-01','2027-01-29'],['2027-02-01','2027-06-25']];
+const semFor = s => SEMS.find(([a,b]) => s<=b) || SEMS[SEMS.length-1];
+
+/* ---------- words & money ---------- */
+function gw(n){
+  if (n===1) return 'gwiazdka';
+  const t = n%10, h = n%100;
+  return (t>=2 && t<=4 && !(h>=12 && h<=14)) ? 'gwiazdki' : 'gwiazdek';
+}
+const G = n => `${n} ${gw(n)}`;
+const zl = g => (g/100).toFixed(2)+' zł';
+const STAR = `<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path fill="#F2A93B" stroke="#C98710" stroke-width="1.2" stroke-linejoin="round" d="M12 2.6l2.85 5.95 6.55.85-4.8 4.55 1.22 6.5L12 17.25l-5.82 3.2 1.22-6.5-4.8-4.55 6.55-.85z"/></svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- sample data ---------- */
+const MOMENTS = {
+  mid:{today:'2026-09-24', clock:'17:40', label:'Thu 24 Sep 2026, 17:40'},
+  after:{today:'2027-02-01', clock:'08:10', label:'Mon 1 Feb 2027, 08:10'},
+};
+const KIDS = [{id:'ola',name:'Ola'},{id:'tymek',name:'Tymek'}];
+const TASKS = [['🛏️','Make the bed'],['🪥','Brush teeth'],['🎒','Pack the school bag'],['📖','Read 20 minutes'],['✏️','Homework']];
+const VARIANTS = [['A','Child page'],['B','Timeline'],['C','Payouts desk']];
+const kidName = id => KIDS.find(k=>k.id===id).name;
+
+let S, U = {variant:'A', moment:'mid', kid:'ola', flow:null, page:null, exp:{}, toast:null};
+const today = () => MOMENTS[U.moment].today;
+
+function hash(str){ let h = 7; for (const c of str) h = (h*31 + c.charCodeAt(0)) % 1000003; return h; }
+function seed(){
+  const t = today();
+  const open = {id:'o3',kid:'ola',start:'2026-09-01',end:'2027-01-29',rate:50,bonus:3,payout:null,days:{},bonuses:[]};
+  const days = schoolDays(open.start, t < open.end ? t : open.end);
+  days.forEach((d,i) => {
+    open.days[d] = TASKS.map((_,ti) => { const r = hash(d+ti)%100; return r<84?'approved':r<90?'rejected':'none'; });
+  });
+  const last = days[days.length-1], prev = days[days.length-2];
+  open.days[last] = ['checked','checked','checked','none','none'];
+  open.days[prev] = open.days[prev].map((s,ti) => ti>=3 ? 'checked' : 'approved');
+  for (let m = monday(open.start); add(m,4) < t && add(m,4) <= open.end; m = add(m,7)){
+    if (hash(m)%4 !== 0) open.bonuses.push({week:m, stars:open.bonus});
+  }
+  S = {nextId:1, tasks:{ola:TASKS.map(t=>[...t]), tymek:[['🛏️','Make the bed'],['🪥','Brush teeth'],['🎒','Pack the school bag'],['🎹','Practise piano']]}, contracts:[
+    {id:'o1',kid:'ola',start:'2025-09-01',end:'2026-01-30',rate:50,bonus:2,payout:{date:'2026-01-30',task:355,bonus:22,stars:377,amount:18850,pending:0}},
+    {id:'o2',kid:'ola',start:'2026-02-02',end:'2026-06-26',rate:50,bonus:3,payout:{date:'2026-06-26',task:372,bonus:39,stars:411,amount:20550,pending:0}},
+    {id:'t1',kid:'tymek',start:'2026-02-02',end:'2026-06-26',rate:40,bonus:2,payout:{date:'2026-06-27',task:296,bonus:22,stars:318,amount:12720,pending:1}},
+    open,
+  ]};
+  U.flow = null; U.page = null; U.exp = {};
+}
+
+/* ---------- model ---------- */
+const byId = id => S.contracts.find(c=>c.id===id);
+const openC = kid => S.contracts.find(c=>c.kid===kid && !c.payout);
+const pastC = kid => S.contracts.filter(c=>c.kid===kid && c.payout).sort((a,b)=>a.start<b.start?1:-1);
+const taskStars = c => c.payout ? c.payout.task : Object.entries(c.days).filter(([d])=>d>=c.start&&d<=c.end).reduce((s,[,v])=>s+v.filter(x=>x==='approved').length,0);
+const bonusStars = c => c.payout ? c.payout.bonus : c.bonuses.reduce((s,b)=>s+b.stars,0);
+const stars = c => taskStars(c)+bonusStars(c);
+const value = c => stars(c)*c.rate;
+const pendingDays = c => c.payout ? [] : Object.keys(c.days).filter(d=>c.days[d].includes('checked')).sort();
+const pendingCount = c => pendingDays(c).reduce((s,d)=>s+c.days[d].filter(x=>x==='checked').length,0);
+function status(c){ const t = today(); if (c.payout) return 'paid'; if (t < c.start) return 'soon'; if (t > c.end) return 'ended'; return 'run'; }
+function statusPill(c){
+  const s = status(c);
+  if (s==='run') return `<span class="pill run">● Open</span>`;
+  if (s==='soon') return `<span class="pill soon">Starts ${fmtS(c.start)}</span>`;
+  if (s==='ended') return `<span class="pill ended">Ended ${fmtS(c.end)} · not paid out</span>`;
+  return `<span class="pill paid">Paid ${fmtS(c.payout.date)}</span>`;
+}
+function progress(c){
+  const all = schoolDays(c.start, c.end), t = today();
+  const done = all.filter(d=>d<=t).length;
+  return {all:all.length, done, left:all.length-done, pct: all.length ? Math.round(done/all.length*100) : 0};
+}
+function approveDay(c,d){ c.days[d] = c.days[d].map(x=>x==='checked'?'approved':x); }
+function setTask(c,d,i,s){ c.days[d][i] = s; }
+function closeC(c){
+  const t = today(), tk = taskStars(c), b = bonusStars(c);
+  c.plannedEnd = c.end;
+  if (t < c.end) c.end = t < c.start ? c.start : t;
+  c.payout = {date:t, task:tk, bonus:b, stars:tk+b, amount:(tk+b)*c.rate, pending:pendingCount(c)};
+}
+function lastOf(kid){ return S.contracts.filter(c=>c.kid===kid).sort((a,b)=>a.end<b.end?1:-1)[0]; }
+function prefill(kid){
+  const t = today(), last = lastOf(kid);
+  let s = last ? nextSchool(last.end) : t;
+  if (s < t) s = isSchool(t) ? t : nextSchool(t);
+  return {tasks:S.tasks[kid].map(t=>[...t]), newE:'', newN:'', start:s, end:semFor(s)[1], rate:((last?last.rate:50)/100).toFixed(2), bonus:String(last?last.bonus:3)};
+}
+function parseRate(v){ const m = String(v).trim().replace(',','.').match(/^(\d+)(?:\.(\d{1,2}))?$/); if (!m) return null; return +m[1]*100 + +((m[2]||'0')+'0').slice(0,2); }
+function validate(f, kid, c){
+  const e = [], t = today(), editing = !!c;
+  if (!f.start || !f.end) { e.push('Pick both dates.'); return e; }
+  if (!editing || c.start > t) { if (f.start < t) e.push(`The start can't be before today (${fmtD(t)}).`); }
+  if (f.end < f.start) e.push('The end must be on or after the start.');
+  if (editing && f.end < t) e.push(`The end can't be before today (${fmtD(t)}).`);
+  for (const o of S.contracts) if (o.kid===kid && o!==c && !(f.end < o.start || f.start > o.end)) e.push(`These dates overlap ${kidName(kid)}'s Contract ${range(o.start,o.end)}.`);
+  if (!editing){
+    const r = parseRate(f.rate); if (!r) e.push('Enter the rate in złoty, e.g. 0.50.');
+    if (!/^\d{1,2}$/.test(String(f.bonus).trim())) e.push('Enter the Weekly bonus as a whole number of gwiazdki (0 for none).');
+  }
+  if (!(f.tasks||[]).length) e.push('Add at least one Task.');
+  if (!schoolDays(f.start,f.end).length && f.end>=f.start) e.push('These dates contain no School days.');
+  return e;
+}
+function applyForm(fl){
+  const f = fl.form;
+  S.tasks[fl.kid] = f.tasks.map(t=>[...t]);
+  if (fl.kind==='edit'){ const c = byId(fl.cid); c.start = f.start; c.end = f.end; return c; }
+  const c = {id:'n'+(S.nextId++), kid:fl.kid, start:f.start, end:f.end, rate:parseRate(f.rate), bonus:+f.bonus, payout:null, days:{}, bonuses:[]};
+  S.contracts.push(c); return c;
+}
+function potential(f){
+  if (!f.start || !f.end || f.end < f.start) return '';
+  const sd = schoolDays(f.start,f.end), weeks = new Set(sd.map(monday)).size;
+  const r = parseRate(f.rate) ?? 0, b = +f.bonus || 0;
+  const nt = (f.tasks||[]).length, max = sd.length*nt + weeks*b;
+  return {sd:sd.length, weeks, nt, maxTask:sd.length*nt, maxBonus:weeks*b, max, maxZl:max*r};
+}
+
+/* ---------- shared form fields ---------- */
+function fields(fl){
+  const f = fl.form, c = fl.cid ? byId(fl.cid) : null, t = today(), editing = fl.kind==='edit';
+  const startLocked = editing && c.start <= t;
+  const sem = semFor(f.start || t);
+  let h = `<div class="form">`;
+  h += `<div class="two">
+    <div class="field"><label for="f-start">Start</label>${startLocked
+      ? `<div class="val">${fmt(c.start)}<span class="fixed">fixed</span></div><div class="hint">It has already started.</div>`
+      : `<input type="date" id="f-start" value="${f.start}" min="${t}">`}</div>
+    <div class="field"><label for="f-end">End</label><input type="date" id="f-end" value="${f.end}" min="${t > (f.start||t) ? t : f.start}"></div>
+  </div>`;
+  if (!editing) h += `<div class="field"><div class="hint">Suggested: the current semester, ${range(sem[0],sem[1])}.${fl.kind==='next'?' Starts on the next School day.':''}</div></div>`;
+  if (editing){
+    h += `<dl class="facts2"><dt>Rate</dt><dd>${zl(c.rate)} per gwiazdka<span class="fixed">fixed</span></dd><dt>Weekly bonus</dt><dd>${G(c.bonus)}<span class="fixed">fixed</span></dd></dl>
+      <div class="hint muted" style="font-size:13px">To change the rate or the Weekly bonus, close this Contract and start a new one.</div>`;
+  } else {
+    h += `<div class="two">
+      <div class="field"><label for="f-rate">Rate</label><div class="row"><input id="f-rate" inputmode="decimal" value="${esc(f.rate)}"><span class="suffix">zł / gw.</span></div><div class="hint">per gwiazdka</div></div>
+      <div class="field"><label for="f-bonus">Weekly bonus</label><div class="row"><input id="f-bonus" inputmode="numeric" value="${esc(f.bonus)}"><span class="suffix">gw.</span></div><div class="hint">at most once a week</div></div>
+    </div>`;
+  }
+  h += `<div class="field"><label for="f-tname">Tasks · each approved Task earns 1 gwiazdka</label><div class="tlist">${f.tasks.map((t,i)=>`<div class="trow"><span class="e">${esc(t[0])}</span><span class="nm">${esc(t[1])}</span><button class="trm" data-act="trm" data-i="${i}" aria-label="Remove ${esc(t[1])}">✕</button></div>`).join('') || '<div class="trow muted">No Tasks yet.</div>'}</div>
+    <div class="row"><input id="f-temoji" value="${esc(f.newE||'')}" placeholder="⭐" aria-label="Icon" style="width:52px;text-align:center"><input id="f-tname" value="${esc(f.newN||'')}" placeholder="New Task, e.g. Feed the cat"><button class="btn sec" style="padding:9px 12px" data-act="tadd">Add</button></div>
+    ${editing ? '<div class="hint">Changes count from the next School day. Days already done keep their Tasks.</div>' : '<div class="hint">The same list every School day.</div>'}</div>`;
+  h += `<div class="preview" id="f-preview">${previewText(fl)}</div>`;
+  if (fl.errors && fl.errors.length) h += `<div class="errs">${fl.errors.map(esc).join('<br>')}</div>`;
+  return h + `</div>`;
+}
+function previewText(fl){
+  const c = fl.cid ? byId(fl.cid) : null;
+  const f = Object.assign({}, fl.form, c && fl.kind==='edit' ? {rate:(c.rate/100).toFixed(2), bonus:String(c.bonus), start: fl.form.start || c.start} : {});
+  const p = potential(f);
+  if (!p) return 'Pick a start and an end.';
+  return `<b>${p.sd} School days</b> in ${p.weeks} weeks. If every Task and Weekly bonus is earned: <b>${G(p.max)} = ${zl(p.maxZl)}</b>.`;
+}
+function readForm(){
+  if (!U.flow || !U.flow.form) return;
+  for (const k of ['start','end','rate','bonus']){ const el = document.getElementById('f-'+k); if (el) U.flow.form[k] = el.value; }
+  const e = document.getElementById('f-temoji'), n = document.getElementById('f-tname');
+  if (e) U.flow.form.newE = e.value; if (n) U.flow.form.newN = n.value;
+}
+
+/* ---------- pending-day list (A sheet) ---------- */
+function pendingList(c){
+  const pd = pendingDays(c);
+  if (!pd.length) return `<div class="allok">✓ Nothing is waiting for approval.</div>`;
+  return pd.map(d => {
+    const v = c.days[d], n = v.filter(x=>x==='checked').length;
+    const em = v.map((x,i)=>x==='checked'?TASKS[i][0]:'').join('');
+    return `<div class="pday"><span class="nm"><b>${fmtD(d)}</b><small>${n} waiting <span class="em">${em}</span></small></span><button class="btn sec" style="padding:8px 12px;font-size:14px" data-act="appday" data-c="${c.id}" data-d="${d}">Approve ${n}</button></div>`;
+  }).join('');
+}
+function earlyNote(c){
+  const t = today();
+  if (t >= c.end) return '';
+  const left = schoolDays(add(t,1), c.end).length;
+  return `Closing early: planned until ${fmt(c.end)}, ${left} School days left. The end date becomes ${fmtD(t)}.`;
+}
+function nextSummary(kid){ const p = prefill(kid); return `from ${fmtD(p.start)} to ${fmtS(p.end)}, ${p.rate} zł per gwiazdka, Weekly bonus ${G(+p.bonus)}`; }
+
+/* ---------- chrome ---------- */
+const statusBar = () => `<div class="status"><span>${MOMENTS[U.moment].clock}</span><span>●●● ▮</span></div>`;
+const head = (title) => `<div class="p-head"><div><h2>${title}</h2><div class="sub">${fmtD(today())} ${P(today()).getUTCFullYear()}</div></div></div>`;
+
+/* ================= A: child page + sheets ================= */
+function variantA(){
+  const k = U.kid, c = openC(k);
+  let h = `<div class="pX">${statusBar()}${head('Contracts')}<div class="aTabs">`;
+  for (const kk of KIDS){
+    const oc = openC(kk.id), col = !oc ? '#98A2B3' : status(oc)==='ended' ? '#F2A93B' : '#16A34A';
+    h += `<button class="aTab" data-act="kid" data-k="${kk.id}" aria-pressed="${kk.id===k}"><span class="av sm ${kk.id}">${kk.name[0]}</span>${kk.name}<span class="dot" style="background:${col}"></span></button>`;
+  }
+  h += `</div>`;
+  if (c){
+    const pr = progress(c), pc = pendingDays(c);
+    h += `<div class="aCard">
+      <div class="top">${statusPill(c)}<span>${range(c.start,c.end)}</span></div>
+      <div class="aBal num"><b>${stars(c)}</b><span>${gw(stars(c))}</span><span class="zl">${zl(value(c))}</span></div>
+      <div class="aSplit">${taskStars(c)} from Tasks · ${bonusStars(c)} from ${c.bonuses.length} Weekly bonuses</div>
+      <div class="track"><i style="width:${pr.pct}%"></i></div>
+      <div class="aProg num"><span>School day ${pr.done} of ${pr.all}</span><span>${pr.left ? pr.left+' to go' : 'Finished'}</span></div>
+      <dl class="aFacts"><div><dt>Rate</dt><dd>${zl(c.rate)} per gwiazdka</dd></div><div><dt>Weekly bonus</dt><dd>${G(c.bonus)}</dd></div><div><dt>Tasks</dt><dd>${S.tasks[c.kid].map(t=>t[0]).join(' ')} · ${S.tasks[c.kid].length} a day</dd></div></dl>
+      ${pc.length ? `<div class="warn">⏳ ${pendingCount(c)} Tasks on ${pc.length} ${pc.length===1?'day':'days'} still wait for approval.</div>` : ''}
+      ${status(c)==='soon' ? `<button class="btn sec" data-act="edit" data-c="${c.id}">Edit</button>` : `<div class="aActs"><button class="btn sec" data-act="edit" data-c="${c.id}">Edit</button><button class="btn pri" data-act="close" data-c="${c.id}">Close &amp; pay out</button></div>`}
+    </div>`;
+  } else {
+    h += `<div class="aEmpty"><h3>No open Contract</h3><p>${kidName(k)} can open Today but can't check anything off until a new Contract starts.</p>
+      <span class="kidsees">${kidName(k)} sees: “Waiting for a new contract”</span>
+      <button class="btn pri" style="width:100%" data-act="create" data-k="${k}">Create a Contract</button></div>`;
+  }
+  const past = pastC(k);
+  h += `<div class="lbl-up aPastLbl">Past Contracts</div><div class="aPast">`;
+  if (!past.length) h += `<div class="aPastRow muted">None yet.</div>`;
+  for (const p of past){
+    const open = U.exp[p.id];
+    h += `<button class="aPastRow" data-act="exp" data-c="${p.id}" aria-expanded="${!!open}"><span class="nm"><b>${range(p.start,p.end)}</b><small>${G(p.payout.stars)} · paid ${fmt(p.payout.date)}</small></span><span class="amt num">${zl(p.payout.amount)}</span><span class="muted">${open?'▴':'▾'}</span></button>`;
+    if (open) h += `<div class="aPastDet"><dl class="num">
+      <dt>Stars from Tasks</dt><dd>${p.payout.task}</dd>
+      <dt>Weekly bonuses</dt><dd>${p.payout.bonus}</dd>
+      <dt>Total</dt><dd>${G(p.payout.stars)}</dd>
+      <dt>Rate</dt><dd>${zl(p.rate)} per gwiazdka</dd>
+      <dt>Payout</dt><dd>${zl(p.payout.amount)} on ${fmt(p.payout.date)}</dd>
+      ${p.payout.pending ? `<dt>Not counted</dt><dd>${p.payout.pending} pending at closing</dd>` : ''}
+      ${p.plannedEnd && p.plannedEnd!==p.end ? `<dt>Closed early</dt><dd>planned until ${fmt(p.plannedEnd)}</dd>` : ''}
+    </dl><div class="muted" style="font-size:12px;margin-top:8px">Frozen: days and bonuses can't be changed.</div></div>`;
+  }
+  h += `</div></div>`;
+  return h;
+}
+function sheetA(){
+  const fl = U.flow; if (!fl) return '';
+  let h = '';
+  if (fl.kind==='create' || fl.kind==='next' || fl.kind==='edit'){
+    const title = fl.kind==='edit' ? 'Edit Contract' : fl.kind==='next' ? 'Start next Contract' : 'New Contract';
+    h = `<h3>${title}</h3><div class="sub">${kidName(fl.kid)}${fl.kind==='next'?' · starts from 0 gwiazdek, nothing carried over':''}</div>${fields(fl)}
+      <div class="btns"><button class="btn pri" data-act="save">${fl.kind==='edit'?'Save':'Start Contract'}</button><button class="btn ghost" data-act="cancel">Cancel</button></div>`;
+  } else if (fl.kind==='close'){
+    const c = byId(fl.cid), pd = pendingDays(c);
+    if (fl.step==='pending'){
+      h = `<h3>${pd.length ? 'Some days still wait for approval' : 'All days approved'}</h3>
+        <div class="sub">${pd.length ? 'Approve them now, or close anyway and they count as 0.' : 'Nothing is waiting any more.'}</div>
+        <div>${pendingList(c)}</div>
+        <div class="btns">${pd.length
+          ? `<button class="btn ghost" data-act="step" data-s="confirm">Close anyway (${pendingCount(c)} count as 0)</button>`
+          : `<button class="btn pri" data-act="step" data-s="confirm">Continue</button>`}
+          <button class="btn ghost" data-act="cancel">Cancel</button></div>`;
+    } else {
+      const early = earlyNote(c), pc = pendingCount(c);
+      h = `<h3>Close &amp; pay out</h3><div class="sub">${kidName(c.kid)} · ${range(c.start,c.end)}</div>
+        <div class="bigamt num"><b>${zl(value(c))}</b><span>${G(stars(c))} × ${zl(c.rate)}</span></div>
+        <dl class="facts2 num"><dt>From Tasks</dt><dd>${taskStars(c)}</dd><dt>Weekly bonuses</dt><dd>${bonusStars(c)}</dd>${pc?`<dt>Pending, not counted</dt><dd>${pc}</dd>`:''}<dt>Closing date</dt><dd>${fmtD(today())}</dd></dl>
+        ${early ? `<div class="warn">${early}</div>` : ''}
+        <div class="muted" style="font-size:13px">After closing, this Contract is frozen and ${kidName(c.kid)} starts again from 0.</div>
+        <div class="btns"><button class="btn go" data-act="pay" data-c="${c.id}">Close &amp; pay out ${zl(value(c))}</button><button class="btn ghost" data-act="cancel">Cancel</button></div>`;
+    }
+  } else if (fl.kind==='paid'){
+    const c = byId(fl.cid);
+    h = `<div class="donebig">✓</div><h3 style="text-align:center">Paid ${zl(c.payout.amount)} to ${kidName(c.kid)}</h3>
+      <div class="sub" style="text-align:center;margin-top:-6px">Contract closed on ${fmt(c.payout.date)} and frozen.</div>
+      <div class="preview">Next Contract: ${nextSummary(c.kid)}.</div>
+      <div class="btns"><button class="btn pri" data-act="startnext" data-k="${c.kid}">Start next Contract</button><button class="btn ghost" data-act="cancel">Not now</button></div>`;
+  }
+  return `<div class="sheet-bg" data-act="cancel" data-bg="1"><div class="sheet" data-stop="1"><span class="grab"></span>${h}</div></div>`;
+}
+
+/* ================= B: timeline + full pages ================= */
+function variantB(){
+  if (U.flow) return pageB();
+  if (U.page) return detailB(byId(U.page));
+  const k = U.kid, c = openC(k);
+  let h = `<div class="pX">${statusBar()}${head('Money')}<div class="bKids">`;
+  for (const kk of KIDS) h += `<button class="bKid" data-act="kid" data-k="${kk.id}" aria-pressed="${kk.id===k}"><span class="av sm ${kk.id}">${kk.name[0]}</span>${kk.name}</button>`;
+  h += `</div><div class="bTL">`;
+  const t = today();
+  if (c && status(c)==='soon') {
+    h += `<div class="bNode"><span class="dotT open"></span><button class="bOpen" data-act="page" data-c="${c.id}"><div class="r1"><b>Next Contract</b>${statusPill(c)}</div><div class="muted">${range(c.start,c.end)} · ${zl(c.rate)} per gwiazdka</div><span class="more">Open ›</span></button></div>`;
+    h += `<div class="bNode"><span class="dotT today">NOW</span><div class="bToday">Today, ${fmtD(t)}</div></div>`;
+  } else if (c) {
+    const pr = progress(c), st = status(c);
+    h += `<div class="bNode"><span class="dotT today">NOW</span><div class="bToday">Today, ${fmtD(t)}</div></div>`;
+    h += `<div class="bNode"><span class="dotT ${st==='ended'?'ended':'open'}"></span><button class="bOpen" data-act="page" data-c="${c.id}">
+      <div class="r1"><b>${range(c.start,c.end)}</b>${statusPill(c)}</div>
+      <div class="r2 num"><b>${stars(c)}</b><span class="muted">${gw(stars(c))}</span><span class="zl">${zl(value(c))}</span></div>
+      <div class="track"><i style="width:${pr.pct}%"></i></div>
+      <div class="muted num" style="font-size:13px">School day ${pr.done} of ${pr.all}${pendingDays(c).length?` · ⏳ ${pendingCount(c)} waiting`:''}</div>
+      <span class="more">Details, dates, payout ›</span></button></div>`;
+  } else {
+    const last = lastOf(k);
+    h += `<div class="bNode"><span class="dotT today">NOW</span><div class="bToday">Today, ${fmtD(t)}</div></div>`;
+    h += `<div class="bNode"><span class="dotT gap"></span><button class="bGap" data-act="create" data-k="${k}"><b>No open Contract</b><span>${last?`Since ${fmt(last.end)}. `:''}${kidName(k)} sees “Waiting for a new contract”.</span><span class="go">+ Start a Contract</span></button></div>`;
+  }
+  for (const p of pastC(k)){
+    h += `<div class="bNode"><span class="dotT coin">zł</span><div class="bPay"><b class="num">Paid ${zl(p.payout.amount)}</b><small>${fmtD(p.payout.date)} ${P(p.payout.date).getUTCFullYear()}</small></div></div>`;
+    h += `<div class="bNode"><span class="dotT" style="background:#D9DDE7;width:12px;height:12px;left:-26px;top:14px"></span><div class="bSeg num"><b>${range(p.start,p.end)}</b><span>${p.payout.task} from Tasks + ${p.payout.bonus} bonus = ${G(p.payout.stars)} × ${zl(p.rate)}</span>${p.plannedEnd&&p.plannedEnd!==p.end?`<span>Closed early, planned until ${fmt(p.plannedEnd)}</span>`:''}</div></div>`;
+  }
+  return h + `</div></div>`;
+}
+function navB(title, back){ return `${statusBar()}<div class="bNav"><button data-act="${back}">‹ Back</button><h3>${title}</h3></div>`; }
+function detailB(c){
+  const pr = progress(c);
+  let h = `<div class="pX">${navB(kidName(c.kid)+"'s Contract",'home')}<div class="bBody">
+    <div class="bHero"><div style="display:flex;justify-content:space-between;align-items:center">${statusPill(c)}<span class="muted" style="font-size:14px">${range(c.start,c.end)}</span></div>
+      <div class="big num"><b>${stars(c)}</b><span class="muted">${gw(stars(c))}</span><span class="zl">${zl(value(c))}</span></div>
+      <div class="muted" style="font-size:13px">${zl(c.rate)} per gwiazdka · Weekly bonus ${G(c.bonus)} · both fixed</div><div style="font-size:14px">Tasks: ${S.tasks[c.kid].map(t=>t[0]+' '+esc(t[1])).join(', ')}</div>
+      <div class="track"><i style="width:${pr.pct}%"></i></div><div class="muted num" style="font-size:13px">School day ${pr.done} of ${pr.all}</div></div>
+    <div class="lbl-up" style="margin:4px 6px -6px">Week by week</div><div class="bWeeks">`;
+  const t = today(), end = t < c.end ? t : c.end;
+  const weeks = [...new Set(schoolDays(c.start, end).map(monday))].reverse();
+  if (!weeks.length) h += `<div class="bWeek"><span class="muted">Starts ${fmtD(c.start)}.</span></div>`;
+  for (const m of weeks){
+    const ds = schoolDays(m < c.start ? c.start : m, add(m,4) > end ? end : add(m,4));
+    const ts = ds.reduce((s,d)=>s+(c.days[d]||[]).filter(x=>x==='approved').length,0);
+    const wt = ds.reduce((s,d)=>s+(c.days[d]||[]).filter(x=>x==='checked').length,0);
+    const b = c.bonuses.find(x=>x.week===m), fin = add(m,4) < t;
+    h += `<div class="bWeek num"><span><b>${fmtS(m)} – ${fmtS(add(m,4))}</b><small>${wt?`⏳ ${wt} waiting`:`${ds.length} School days`}</small></span><span>${ts} ${STAR}</span>
+      <span class="bon ${b?'y':'n'}">${b?`+${b.stars} bonus`:fin?'no bonus':'this week'}</span></div>`;
+  }
+  h += `</div></div><div class="bDock"><button class="btn sec" data-act="edit" data-c="${c.id}">Edit</button>${status(c)==='soon'?'':`<button class="btn pri" data-act="close" data-c="${c.id}">Close &amp; pay out</button>`}</div></div>`;
+  return h;
+}
+function pageB(){
+  const fl = U.flow;
+  if (fl.kind==='create' || fl.kind==='next' || fl.kind==='edit'){
+    const title = fl.kind==='edit' ? 'Edit Contract' : fl.kind==='next' ? 'Next Contract' : 'New Contract';
+    const p = potential(fl.kind==='edit' ? Object.assign({}, fl.form, {rate:(byId(fl.cid).rate/100).toFixed(2), bonus:String(byId(fl.cid).bonus), start: fl.form.start || byId(fl.cid).start}) : fl.form);
+    return `<div class="pX">${navB(title,'cancel')}<div class="bBody">
+      <div class="muted" style="font-size:14px">${kidName(fl.kid)}${fl.kind==='next'?' · starts from 0 gwiazdek':''}</div>
+      ${fields(fl)}
+      ${p ? `<div class="bSum num"><div class="lbl-up">Most this Contract can pay</div>
+        <div style="display:flex;justify-content:space-between"><span>${p.sd} School days × ${p.nt} Tasks</span><b>${p.maxTask}</b></div>
+        <div style="display:flex;justify-content:space-between"><span>${p.weeks} Weekly bonuses × ${fl.kind==='edit'?byId(fl.cid).bonus:(+fl.form.bonus||0)}</span><b>${p.maxBonus}</b></div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid #E4E7EE;padding-top:6px"><span>${G(p.max)}</span><b>${zl(p.maxZl)}</b></div></div>` : ''}
+      </div><div class="bDock"><button class="btn pri" data-act="save">${fl.kind==='edit'?'Save':'Start Contract'}</button></div></div>`;
+  }
+  const c = byId(fl.cid);
+  const steps = ['Pending days','Amount','Paid'], idx = fl.kind==='paid' ? 2 : fl.step==='pending' ? 0 : 1;
+  let h = `<div class="pX">${navB('Close & pay out', fl.kind==='paid' ? 'home' : 'cancel')}<div class="bBody">
+    <div class="bStep">${steps.map((s,i)=>`<span class="${i<idx?'done':i===idx?'on':''}">${i<idx?'✓ ':''}${s}</span>`).join('')}</div>`;
+  if (fl.kind==='paid'){
+    h += `<div class="bHero" style="align-items:center;text-align:center"><div class="donebig">✓</div><b style="font-size:22px">Paid ${zl(c.payout.amount)} to ${kidName(c.kid)}</b><span class="muted">${range(c.start,c.end)} is closed and frozen.</span></div>
+      <div class="bSum"><div class="lbl-up">Next Contract</div><span>${nextSummary(c.kid)}.</span></div>
+      </div><div class="bDock"><button class="btn ghost" data-act="home">Not now</button><button class="btn pri" data-act="startnext" data-k="${c.kid}">Start next Contract</button></div></div>`;
+    return h;
+  }
+  if (fl.step==='pending'){
+    const pd = pendingDays(c);
+    h += `<div class="muted" style="font-size:14px">${pd.length ? `Decide each waiting Task now, or continue and ${pendingCount(c)} waiting Tasks count as 0.` : 'Every day is decided.'}</div>`;
+    if (!pd.length) h += `<div class="allok">✓ Nothing is waiting for approval.</div>`;
+    for (const d of pd){
+      h += `<div class="bPD"><div class="h"><b>${fmtD(d)}</b><button class="link" data-act="appday" data-c="${c.id}" data-d="${d}">Approve all</button></div>`;
+      c.days[d].forEach((s,i) => {
+        h += `<div class="t"><span class="e">${TASKS[i][0]}</span><span class="nm">${TASKS[i][1]}<br><span class="st ${s}">${{approved:'★ Approved',rejected:'Not counted',none:'Not done',checked:'⏳ Waiting'}[s]}</span></span>
+          <span class="acts">${s==='checked'?`<button class="no" data-act="task" data-c="${c.id}" data-d="${d}" data-i="${i}" data-s="rejected" aria-label="Reject">✕</button><button class="ok" data-act="task" data-c="${c.id}" data-d="${d}" data-i="${i}" data-s="approved" aria-label="Approve">✓</button>`:''}</span></div>`;
+      });
+      h += `</div>`;
+    }
+    h += `</div><div class="bDock"><button class="btn pri" data-act="step" data-s="confirm">${pd.length?`Continue, ${pendingCount(c)} count as 0`:'Continue'}</button></div></div>`;
+    return h;
+  }
+  const early = earlyNote(c), pc = pendingCount(c);
+  h += `<div class="bCalc num"><span>Stars from Tasks</span><b>${taskStars(c)}</b><span>Weekly bonuses (${c.bonuses.length} weeks)</span><b>${bonusStars(c)}</b>
+      ${pc?`<span class="muted">Waiting, not counted</span><b class="muted">${pc}</b>`:''}
+      <span>Total</span><b>${G(stars(c))}</b><span>Rate</span><b>× ${zl(c.rate)}</b>
+      <span class="tot">To pay ${kidName(c.kid)}</span><span class="tot">${zl(value(c))}</span></div>
+    ${early ? `<div class="warn">${early}</div>` : ''}
+    <div class="muted" style="font-size:13px">Closing date ${fmtD(today())}. After this the Contract is frozen.</div>
+    </div><div class="bDock"><button class="btn ghost" data-act="step" data-s="pending">‹ Pending</button><button class="btn go" data-act="pay" data-c="${c.id}">Pay ${zl(value(c))}</button></div></div>`;
+  return h;
+}
+
+/* ================= C: payouts desk, inline ================= */
+function variantC(){
+  const owed = KIDS.reduce((s,k)=>{ const c = openC(k.id); return s + (c ? value(c) : 0); },0);
+  let h = `<div class="pX">${statusBar()}${head('Payouts')}
+    <div class="cOwed"><span class="l">Owed now</span><b class="num">${zl(owed)}</b><small>What you'd pay if you closed every open Contract today.</small></div>`;
+  for (const k of KIDS){
+    const c = openC(k.id), fl = U.flow && U.flow.kid===k.id ? U.flow : null;
+    h += `<div class="cKid"><div class="h"><span class="av ${k.id}">${k.name[0]}</span>`;
+    if (c){
+      const pr = progress(c), pc = pendingCount(c);
+      h += `<span class="nm">${k.name}<small>${statusPill(c)}</small></span><span class="zl num">${zl(value(c))}<small>${G(stars(c))}</small></span></div>
+        <div class="cMeter" aria-label="${pr.done} of ${pr.all} School days">${Array.from({length:20},(_,i)=>`<i class="${i < Math.round(pr.pct/5) ? 'f':''}"></i>`).join('')}</div>
+        <div class="cMeta num"><button class="cDates" data-act="edit" data-c="${c.id}">${range(c.start,c.end)} ✎</button><span>${zl(c.rate)}/gw. · bonus ${c.bonus} · ${S.tasks[c.kid].length} Tasks</span></div>`;
+      if (!fl) h += `<div class="cActs">${pc?`<span class="warn" style="flex:1.2;padding:8px 10px;font-size:13px">⏳ ${pc} waiting</span>`:''}${status(c)==='soon' ? `<span class="muted" style="font-size:13px">Nothing to pay out before it starts.</span>` : `<button class="btn pri" data-act="close" data-c="${c.id}">Close &amp; pay out</button>`}</div>`;
+    } else {
+      const last = lastOf(k.id);
+      h += `<span class="nm">${k.name}<small><span class="pill none">No open Contract</span></small></span><span class="zl" style="color:#98A2B3">–</span></div>
+        <div class="cMeta"><span>${last?`Last one ended ${fmt(last.end)}. `:''}Sees “Waiting for a new contract”.</span></div>`;
+      if (!fl) h += `<div class="cActs"><button class="btn sec" data-act="create" data-k="${k.id}">Create a Contract</button></div>`;
+    }
+    if (fl) h += `<div class="cIn">${inlineC(fl)}</div>`;
+    h += `</div>`;
+  }
+  // statement
+  const paid = S.contracts.filter(c=>c.payout).sort((a,b)=>a.payout.date<b.payout.date?1:-1);
+  h += `<div class="lbl-up cStmtLbl">Payout statement</div><div class="cStmt">`;
+  let yr = null;
+  for (const p of paid){
+    const y = P(p.payout.date).getUTCFullYear();
+    if (y!==yr){ h += `<div class="yr">${y}</div>`; yr = y; }
+    h += `<div class="r num"><span class="av sm ${p.kid}">${kidName(p.kid)[0]}</span><span><b>${fmtS(p.payout.date)}</b> · ${kidName(p.kid)}<small>${range(p.start,p.end)} · ${p.payout.stars} × ${zl(p.rate)}</small></span><span class="a">${zl(p.payout.amount)}</span></div>`;
+  }
+  return h + `</div></div>`;
+}
+function inlineC(fl){
+  if (fl.kind==='create' || fl.kind==='next' || fl.kind==='edit'){
+    const t = fl.kind==='edit' ? 'Edit Contract' : fl.kind==='next' ? 'Next Contract, from 0 gwiazdek' : 'New Contract';
+    return `<b>${t}</b>${fields(fl)}<div style="display:flex;gap:8px"><button class="btn ghost" style="flex:1" data-act="cancel">Cancel</button><button class="btn pri" style="flex:1.4" data-act="save">${fl.kind==='edit'?'Save':'Start'}</button></div>`;
+  }
+  const c = byId(fl.cid);
+  if (fl.kind==='paid'){
+    return `${receipt(c,true)}<div class="preview">Next Contract: ${nextSummary(c.kid)}.</div>
+      <div style="display:flex;gap:8px"><button class="btn ghost" style="flex:1" data-act="cancel">Not now</button><button class="btn pri" style="flex:1.4" data-act="startnext" data-k="${c.kid}">Start next Contract</button></div>`;
+  }
+  const early = earlyNote(c);
+  return `${receipt(c,false)}${early?`<div class="warn">${early}</div>`:''}
+    <div style="display:flex;gap:8px"><button class="btn ghost" style="flex:1" data-act="cancel">Cancel</button><button class="btn go" style="flex:1.6" data-act="pay" data-c="${c.id}">Pay ${zl(value(c))} &amp; close</button></div>`;
+}
+function receipt(c, paid){
+  const pd = paid ? [] : pendingDays(c), pc = paid ? c.payout.pending : pendingCount(c);
+  const P2 = paid ? c.payout : {task:taskStars(c), bonus:bonusStars(c), stars:stars(c), amount:value(c), date:today()};
+  let h = `<div class="rcpt num"><div class="t">PAYOUT · ${kidName(c.kid).toUpperCase()}</div><div class="ln"><span>${range(c.start,c.end)}</span></div><hr>
+    <div class="ln"><span>Tasks</span><span>${P2.task} gw.</span></div>
+    <div class="ln"><span>Weekly bonuses</span><span>${P2.bonus} gw.</span></div>`;
+  for (const d of pd){
+    const n = c.days[d].filter(x=>x==='checked').length;
+    h += `<div class="ln pend"><span>⏳ ${fmtD(d)}: ${n} waiting</span><span><button data-act="appday" data-c="${c.id}" data-d="${d}">Approve</button></span></div>`;
+  }
+  if (pc) h += `<div class="ln pend"><span>${paid?'Pending at closing':'Waiting, counts as 0'}</span><span>${pc}</span></div>`;
+  h += `<hr><div class="ln"><span>${G(P2.stars)}</span><span>× ${zl(c.rate)}</span></div>
+    <div class="ln tot"><span>TOTAL</span><span>${zl(P2.amount)}</span></div>
+    <div class="ln muted"><span>${paid?'Paid':'Date'}</span><span>${fmt(P2.date)}</span></div>
+    ${paid?'<span class="stamp">PAID</span>':''}</div>`;
+  return h;
+}
+
+/* ---------- render ---------- */
+function renderCtl(){
+  const seg = (name, opts, cur) => `<div class="seg">${opts.map(([v,l])=>`<button data-ctl="${name}" data-v="${v}" aria-pressed="${v===cur}">${l}</button>`).join('')}</div>`;
+  document.getElementById('ctl').innerHTML =
+    `<div class="ctl-row"><span>Moment</span>${seg('moment',[['mid','Thu 24 Sep 2026'],['after','Mon 1 Feb 2027']],U.moment)}</div>
+     <div class="ctl-row"><span>Data</span><button class="reset" data-ctl="reset">Reset sample data</button></div>`;
+}
+function renderReadout(){
+  document.getElementById('readout').innerHTML = 'State: ' + KIDS.map(k => {
+    const c = openC(k.id);
+    return `<b>${k.name}</b> ` + (c ? `open ${range(c.start,c.end)}, ${G(stars(c))} = ${zl(value(c))}, ${pendingCount(c)} waiting` : 'no open Contract') + `, ${pastC(k.id).length} past`;
+  }).join(' · ');
+}
+function render(){
+  const scr = document.getElementById('screen'), top = scr.scrollTop;
+  scr.innerHTML = {A:variantA,B:variantB,C:variantC}[U.variant]();
+  scr.scrollTop = top;
+  const ov = document.getElementById('overlay');
+  ov.innerHTML = (U.variant==='A' ? sheetA() : '') + (U.toast ? `<div class="toast">${U.toast}</div>` : '');
+  U.toast = null;
+  const [key,name] = VARIANTS.find(v=>v[0]===U.variant);
+  document.getElementById('vlabel').innerHTML = `${key} <small>(${name})</small>`;
+  renderCtl(); renderReadout();
+  try { history.replaceState(null,'','#'+U.variant); } catch(e){}
+}
+function toTop(){ document.getElementById('screen').scrollTop = 0; }
+function cycle(dir){
+  const i = VARIANTS.findIndex(v=>v[0]===U.variant);
+  U.variant = VARIANTS[(i+dir+VARIANTS.length)%VARIANTS.length][0];
+  U.flow = null; U.page = null; render(); toTop();
+}
+document.getElementById('prev').onclick = () => cycle(-1);
+document.getElementById('next').onclick = () => cycle(1);
+document.addEventListener('keydown', e => {
+  const a = document.activeElement;
+  if (a && (a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.isContentEditable)) return;
+  if (e.key==='ArrowLeft') cycle(-1);
+  if (e.key==='ArrowRight') cycle(1);
+});
+document.getElementById('ctl').addEventListener('click', e => {
+  const b = e.target.closest('[data-ctl]'); if (!b) return;
+  if (b.dataset.ctl==='moment') U.moment = b.dataset.v;
+  seed(); render(); toTop();
+});
+function onInput(){ readForm(); const el = document.getElementById('f-preview'); if (el && U.flow) el.innerHTML = previewText(U.flow); }
+for (const id of ['screen','overlay']){
+  const root = document.getElementById(id);
+  root.addEventListener('input', onInput);
+  root.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    if (b.dataset.bg && e.target !== b) return; // clicks inside the sheet don't close it
+    readForm();
+    const x = b.dataset, fl = U.flow, scrollTop = ['page','home','close','step','pay','startnext','create','save'].includes(x.act) && U.variant==='B';
+    switch (x.act){
+      case 'kid': U.kid = x.k; break;
+      case 'exp': U.exp[x.c] = !U.exp[x.c]; break;
+      case 'page': U.page = x.c; break;
+      case 'home': U.page = null; U.flow = null; break;
+      case 'create': U.flow = {kind:'create', kid:x.k, form:prefill(x.k)}; break;
+      case 'edit': { const c = byId(x.c); U.flow = {kind:'edit', kid:c.kid, cid:c.id, form:{start:c.start, end:c.end, tasks:S.tasks[c.kid].map(t=>[...t]), newE:'', newN:''}}; break; }
+      case 'close': { const c = byId(x.c); U.flow = {kind:'close', kid:c.kid, cid:c.id, step: pendingDays(c).length ? 'pending' : 'confirm'}; break; }
+      case 'step': fl.step = x.s; break;
+      case 'appday': approveDay(byId(x.c), x.d); break;
+      case 'task': setTask(byId(x.c), x.d, +x.i, x.s); break;
+      case 'pay': { const c = byId(x.c); closeC(c); U.flow = {kind:'paid', kid:c.kid, cid:c.id}; U.page = null; break; }
+      case 'startnext': U.flow = {kind:'next', kid:x.k, form:prefill(x.k)}; break;
+      case 'save': {
+        const c = fl.kind==='edit' ? byId(fl.cid) : null;
+        if (c && c.start <= today()) fl.form.start = c.start;
+        fl.errors = validate(fl.form, fl.kid, c);
+        if (!fl.errors.length){ const r = applyForm(fl); U.toast = fl.kind==='edit' ? 'Dates saved' : `Contract started for ${kidName(fl.kid)}: ${range(r.start,r.end)}`; U.flow = null; }
+        break; }
+      case 'cancel': U.flow = null; break;
+      case 'tadd': { const f = fl.form, n = (f.newN||'').trim(); if (n){ f.tasks.push([(f.newE||'').trim()||'⭐', n]); f.newE=''; f.newN=''; } break; }
+      case 'trm': fl.form.tasks.splice(+x.i,1); break;
+    }
+    render();
+    if (scrollTop) toTop();
+  });
+}
+(function(){
+  const m = (location.hash||'').match(/^#([ABC])$/);
+  if (m) U.variant = m[1];
+  seed(); render();
+})();
+</script>
