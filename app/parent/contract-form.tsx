@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { mostItCanPay, parseRate } from "@/lib/contracts";
 import type { ListedTask } from "@/lib/parent-contracts";
-import { taskEmoji } from "@/lib/task-icons";
+import { TASK_ICONS, taskEmoji } from "@/lib/task-icons";
 import { formatPln, starsWord } from "@/lib/today";
 import type { FormState } from "./contract-actions";
 
@@ -17,38 +17,47 @@ type Props = {
   tasks: ListedTask[];
   starts_on: string;
   ends_on: string;
-  // Editing an open Contract: the rate and bonus are fixed, the start too once it has begun.
-  fixed?: { grosze_per_star: number; weekly_bonus_stars: number; startLocked: boolean };
   rate?: string;
   bonus?: string;
+  // Editing an open Contract: Task changes count from the next day, and the
+  // start is fixed once the Contract has begun.
+  editing?: { startLocked: boolean };
   today: string;
 };
 
-const fieldCls = "w-full rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-base";
+const fieldCls = "rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-base";
 
-// Create, Start next contract and Edit share one form: dates, the child's Task
-// list, and the rate and Weekly bonus (fixed once the Contract exists).
+// Keeps only what a złoty amount can hold: digits and one separator with up to two decimals.
+const moneyInput = (text: string) => {
+  const [whole, ...rest] = text.replace(/[^\d.,]/g, "").replace(",", ".").split(".");
+  return rest.length ? `${whole}.${rest.join("").slice(0, 2)}` : whole;
+};
+const wholeInput = (text: string) => text.replace(/\D/g, "").slice(0, 2);
+
+// Create, Start next contract and Edit share one form: dates, the rate and
+// Weekly bonus, and the child's Task list.
 export function ContractForm(props: Props) {
-  const { fixed, today } = props;
+  const { editing, today } = props;
   const [state, formAction, pending] = useActionState(props.action, {});
   const [tasks, setTasks] = useState<Draft[]>(props.tasks);
   const [startsOn, setStartsOn] = useState(props.starts_on);
   const [endsOn, setEndsOn] = useState(props.ends_on);
   const [rate, setRate] = useState(props.rate ?? "0.50");
   const [bonus, setBonus] = useState(props.bonus ?? "3");
-  const [newIcon, setNewIcon] = useState("");
   const [newName, setNewName] = useState("");
+  const [newIcon, setNewIcon] = useState(TASK_ICONS[0]);
 
   const addTask = () => {
     if (!newName.trim()) return;
-    setTasks([...tasks, { name: newName.trim(), icon: newIcon.trim() || "⭐" }]);
+    setTasks([...tasks, { name: newName.trim(), icon: newIcon }]);
     setNewName("");
-    setNewIcon("");
   };
 
-  const groszePerStar = fixed ? fixed.grosze_per_star : parseRate(rate);
-  const bonusStars = fixed ? fixed.weekly_bonus_stars : Number(bonus) || 0;
-  const most = startsOn && endsOn && startsOn <= endsOn ? mostItCanPay({ starts_on: startsOn, ends_on: endsOn }, tasks.length, bonusStars) : null;
+  const groszePerStar = parseRate(rate);
+  const most =
+    startsOn && endsOn && startsOn <= endsOn
+      ? mostItCanPay({ starts_on: startsOn, ends_on: endsOn }, tasks.length, Number(bonus) || 0)
+      : null;
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -56,7 +65,7 @@ export function ContractForm(props: Props) {
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-semibold">
           Start
-          {fixed?.startLocked ? (
+          {editing?.startLocked ? (
             <>
               <input type="hidden" name="starts_on" value={startsOn} />
               <span className="py-2 text-base font-normal">{startsOn} · fixed</span>
@@ -78,35 +87,49 @@ export function ContractForm(props: Props) {
           />
         </label>
       </div>
-      {!fixed?.startLocked && startsOn && startsOn < today && (
+      {!editing?.startLocked && startsOn && startsOn < today && (
         <p className="-mt-2 text-xs text-[#6B7280]">
           Starts in the past: earlier School days start empty and count once you approve them.
         </p>
       )}
 
-      {fixed ? (
-        <dl className="grid grid-cols-2 gap-2 rounded-lg bg-[#F6F7F9] p-3 text-sm">
-          <dt className="text-[#6B7280]">Rate</dt>
-          <dd className="text-right font-semibold">{formatPln(fixed.grosze_per_star)} per gwiazdka · fixed</dd>
-          <dt className="text-[#6B7280]">Weekly bonus</dt>
-          <dd className="text-right font-semibold">
-            {fixed.weekly_bonus_stars} {starsWord(fixed.weekly_bonus_stars)} · fixed
-          </dd>
-          <dd className="col-span-2 text-xs text-[#6B7280]">
-            To change the rate or the Weekly bonus, close this Contract and start a new one.
-          </dd>
-        </dl>
-      ) : (
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1 text-sm font-semibold">
-            Rate (zł per gwiazdka)
-            <input name="rate" inputMode="decimal" required value={rate} onChange={(e) => setRate(e.target.value)} className={fieldCls} />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-semibold">
-            Weekly bonus (gwiazdki)
-            <input name="bonus" inputMode="numeric" required value={bonus} onChange={(e) => setBonus(e.target.value)} className={fieldCls} />
-          </label>
-        </div>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="flex flex-col gap-1 text-sm font-semibold">
+          Rate
+          <span className="flex items-center gap-2">
+            <input
+              name="rate"
+              inputMode="decimal"
+              required
+              value={rate}
+              onChange={(e) => setRate(moneyInput(e.target.value))}
+              className={`${fieldCls} w-full min-w-0`}
+            />
+            <span className="shrink-0 font-normal text-[#6B7280]">zł</span>
+          </span>
+          <span className="text-xs font-normal text-[#6B7280]">per gwiazdka</span>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-semibold">
+          Weekly bonus
+          <span className="flex items-center gap-2">
+            <input
+              name="bonus"
+              inputMode="numeric"
+              pattern="\d{1,2}"
+              required
+              value={bonus}
+              onChange={(e) => setBonus(wholeInput(e.target.value))}
+              className={`${fieldCls} w-full min-w-0`}
+            />
+            <span className="shrink-0 font-normal text-[#6B7280]">gw.</span>
+          </span>
+          <span className="text-xs font-normal text-[#6B7280]">at most once a week</span>
+        </label>
+      </div>
+      {editing && (
+        <p className="-mt-2 text-xs text-[#6B7280]">
+          A new rate counts for the whole Contract, including gwiazdki already earned.
+        </p>
       )}
 
       <fieldset className="flex flex-col gap-2">
@@ -130,33 +153,51 @@ export function ContractForm(props: Props) {
             </li>
           ))}
         </ul>
-        <div className="flex gap-2">
-          <input
-            aria-label="Icon"
-            placeholder="⭐"
-            value={newIcon}
-            onChange={(e) => setNewIcon(e.target.value)}
-            className={`${fieldCls} w-14 text-center`}
-          />
-          <input
-            aria-label="New Task"
-            placeholder="New Task, e.g. Feed the cat"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addTask();
-              }
-            }}
-            className={`${fieldCls} flex-1`}
-          />
-          <button type="button" onClick={addTask} className="rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm font-semibold">
-            Add
-          </button>
+        <div className="flex flex-col gap-2 rounded-lg bg-[#F6F7F9] p-2">
+          <div className="flex gap-2">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white text-xl" aria-hidden>
+              {taskEmoji(newIcon)}
+            </span>
+            <input
+              aria-label="New Task"
+              placeholder="New Task, e.g. Feed the cat"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addTask();
+                }
+              }}
+              className={`${fieldCls} min-w-0 flex-1`}
+            />
+            <button
+              type="button"
+              onClick={addTask}
+              disabled={!newName.trim()}
+              className="shrink-0 rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm font-semibold disabled:opacity-50"
+            >
+              Add
+            </button>
+          </div>
+          <div role="radiogroup" aria-label="Icon" className="flex flex-wrap gap-1">
+            {TASK_ICONS.map((icon) => (
+              <button
+                key={icon}
+                type="button"
+                role="radio"
+                aria-checked={icon === newIcon}
+                aria-label={icon}
+                onClick={() => setNewIcon(icon)}
+                className={`size-9 rounded-lg text-xl ${icon === newIcon ? "bg-white ring-2 ring-[#2563EB]" : "active:bg-white"}`}
+              >
+                {taskEmoji(icon)}
+              </button>
+            ))}
+          </div>
         </div>
         <p className="text-xs text-[#6B7280]">
-          {fixed
+          {editing
             ? "Changes count from the next School day. Days already done keep their Tasks."
             : "The same list every School day."}
         </p>
@@ -185,7 +226,7 @@ export function ContractForm(props: Props) {
 
       <div className="flex flex-col gap-2">
         <button disabled={pending} className="rounded-xl bg-[#2563EB] p-3 font-bold text-white disabled:opacity-50">
-          {submitLabelText(props.submitLabel, pending)}
+          {pending ? "Saving…" : props.submitLabel}
         </button>
         <Link href={props.cancelHref} className="p-2 text-center text-sm text-[#6B7280]">
           Cancel
@@ -194,5 +235,3 @@ export function ContractForm(props: Props) {
     </form>
   );
 }
-
-const submitLabelText = (label: string, pending: boolean) => (pending ? "Saving…" : label);

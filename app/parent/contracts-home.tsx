@@ -290,11 +290,9 @@ function SheetFor({
           tasks={child.tasks}
           starts_on={open.starts_on}
           ends_on={open.ends_on}
-          fixed={{
-            grosze_per_star: open.grosze_per_star,
-            weekly_bonus_stars: open.weekly_bonus_stars,
-            startLocked: open.starts_on <= today,
-          }}
+          rate={(open.grosze_per_star / 100).toFixed(2)}
+          bonus={String(open.weekly_bonus_stars)}
+          editing={{ startLocked: open.starts_on <= today }}
           today={today}
         />
       </BottomSheet>

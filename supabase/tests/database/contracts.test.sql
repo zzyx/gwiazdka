@@ -72,26 +72,26 @@ select pg_temp.act_as('00000000-0000-0000-0000-00000000a0a0');
 -- Edit -------------------------------------------------------------------------
 
 select throws_ok(
-  $$ select update_contract('c7000000-0000-0000-0000-0000000000a1', '2026-09-14', '2027-01-31',
+  $$ select update_contract('c7000000-0000-0000-0000-0000000000a1', '2026-09-14', '2027-01-31', 50, 3,
        '[{"id": "70000000-0000-0000-0000-0000000000a1"}, {"id": "70000000-0000-0000-0000-0000000000a3"}]') $$,
   'The start can''t change: the Contract has already started.',
   'the start of a Contract that has started is fixed'
 );
 select throws_ok(
-  $$ select update_contract('c7000000-0000-0000-0000-0000000000a1', '2026-09-01', '2026-09-22',
+  $$ select update_contract('c7000000-0000-0000-0000-0000000000a1', '2026-09-01', '2026-09-22', 50, 3,
        '[{"id": "70000000-0000-0000-0000-0000000000a1"}, {"id": "70000000-0000-0000-0000-0000000000a3"}]') $$,
   'The end can''t be before today.',
   'the end can''t move before today'
 );
 select throws_ok(
-  $$ select update_contract('c7000000-0000-0000-0000-0000000000a1', '2026-09-01', '2027-01-31', '[]') $$,
+  $$ select update_contract('c7000000-0000-0000-0000-0000000000a1', '2026-09-01', '2027-01-31', 50, 3, '[]') $$,
   'Add at least one Task.',
   'a Contract needs at least one Task'
 );
 select lives_ok(
-  $$ select update_contract('c7000000-0000-0000-0000-0000000000a1', '2026-09-01', '2026-12-18',
+  $$ select update_contract('c7000000-0000-0000-0000-0000000000a1', '2026-09-01', '2026-12-18', 60, 2,
        '[{"name": "Feed the fish", "icon": "🐟"}, {"id": "70000000-0000-0000-0000-0000000000a1"}]') $$,
-  'a parent edits the end date and the Task list of an open Contract'
+  'a parent edits the end date, the rate, the Weekly bonus and the Task list of an open Contract'
 );
 select results_eq(
   $$ select name, position, active_from, active_until from tasks
@@ -101,10 +101,10 @@ select results_eq(
             ('Pack school bag', 0, '2026-09-01', '2026-09-24') $$,
   'Task list changes count from the next day; today keeps its Tasks'
 );
-select is(
-  (select ends_on from contracts where id = 'c7000000-0000-0000-0000-0000000000a1'),
-  '2026-12-18'::date,
-  'the new end date is saved'
+select results_eq(
+  $$ select ends_on, grosze_per_star, weekly_bonus_stars from contracts where id = 'c7000000-0000-0000-0000-0000000000a1' $$,
+  $$ values ('2026-12-18'::date, 60, 2) $$,
+  'the new end date, rate and Weekly bonus are saved'
 );
 
 -- A Contract that hasn't started yet: its start can move, and it can't be paid out.
@@ -120,7 +120,7 @@ select lives_ok(
 );
 select lives_ok(
   $$ select update_contract((select id from contracts where child_id = 'c0000000-0000-0000-0000-0000000000b1' and closed_on is null),
-       '2026-10-12', '2027-01-29', '[{"id": "70000000-0000-0000-0000-0000000000b1"}]') $$,
+       '2026-10-12', '2027-01-29', 100, 3, '[{"id": "70000000-0000-0000-0000-0000000000b1"}]') $$,
   'the start of a Contract that hasn''t started can move'
 );
 select throws_ok(
@@ -144,8 +144,8 @@ select pg_temp.act_as('00000000-0000-0000-0000-00000000a0a0');
 select results_eq(
   $$ select paid_on, task_stars, bonus_stars, amount_grosze, not_counted, planned_ends_on
      from close_contract('c7000000-0000-0000-0000-0000000000a1') $$,
-  $$ values ('2026-09-23'::date, 2, 0, 100, 1, '2026-12-18'::date) $$,
-  'Close & pay out pays the approved Stars at the rate; waiting Check-offs count as 0'
+  $$ values ('2026-09-23'::date, 2, 0, 120, 1, '2026-12-18'::date) $$,
+  'Close & pay out pays the approved Stars at the current rate; waiting Check-offs count as 0'
 );
 select results_eq(
   $$ select ends_on, closed_on from contracts where id = 'c7000000-0000-0000-0000-0000000000a1' $$,
@@ -174,7 +174,7 @@ select lives_ok(
 select pg_temp.act_as('00000000-0000-0000-0000-0000000000a1');
 select results_eq(
   $$ select task_stars, amount_grosze from payouts $$,
-  $$ values (2, 100) $$,
+  $$ values (2, 120) $$,
   'a child sees their own Payouts'
 );
 

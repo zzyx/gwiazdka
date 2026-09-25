@@ -29,11 +29,11 @@ The parent's decision on one Task on one School day: approved earns one Star, re
 _Avoid_: accept, confirm, review
 
 **Weekly bonus**:
-Extra Stars the parent grants a child by hand, at most once per week, after judging that week. Its size is fixed by the Contract; it is never computed automatically.
+Extra Stars the parent grants a child by hand, at most once per week, after judging that week. Its size is set by the Contract; it is never computed automatically.
 _Avoid_: streak, weekly reward
 
 **Contract**:
-One child's agreement for a period with a start and end date, a fixed PLN value per Star and a fixed Weekly bonus size. A child has at most one open Contract, and Stars are earned only inside one.
+One child's agreement for a period with a start and end date, a PLN value per Star and a Weekly bonus size. The parent can change the rate and bonus size while the Contract is open, and the current rate counts for all of its Stars. A child has at most one open Contract, and Stars are earned only inside one.
 _Avoid_: semester, period, agreement
 
 **Payout**:

@@ -19,6 +19,9 @@ const ICONS: Record<string, string> = {
   trash: "🗑️",
 };
 
+// The icons the parent picks from when adding a Task.
+export const TASK_ICONS = Object.keys(ICONS);
+
 export function taskEmoji(icon: string): string {
   return ICONS[icon] ?? icon;
 }
