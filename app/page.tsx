@@ -6,7 +6,7 @@ import { ParentHome } from "./parent/parent-home";
 export default async function Home({ searchParams }: PageProps<"/">) {
   const viewer = await getViewer();
   const { day } = await searchParams;
-  if (viewer.kind === "parent") return <ParentHome childList={viewer.children} />;
+  if (viewer.kind === "parent") return <ParentHome />;
   if (viewer.kind === "child") return <ChildHome child={viewer.child} day={typeof day === "string" ? day : undefined} />;
 
   return (
