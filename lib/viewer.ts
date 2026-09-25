@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export type Child = { id: string; name: string };
@@ -9,7 +10,8 @@ export type Viewer =
   | { kind: "child"; child: Child }
   | { kind: "none" };
 
-export async function getViewer(): Promise<Viewer> {
+// Cached per request: the page and its viewport both ask.
+export const getViewer = cache(async (): Promise<Viewer> => {
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
   const userId = claims?.claims.sub;
@@ -30,4 +32,4 @@ export async function getViewer(): Promise<Viewer> {
   if (child) return { kind: "child", child };
 
   return { kind: "none" };
-}
+});

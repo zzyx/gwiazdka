@@ -1,31 +1,37 @@
 "use client";
 
+import { Check, Clock, Moon, X } from "lucide-react";
 import Link from "next/link";
 import { useOptimistic, useState, useTransition } from "react";
 import type { Board, BoardTask } from "@/lib/child-board";
-import { taskEmoji } from "@/lib/task-icons";
 import { addDays, formatPln, starsWord, type TaskState } from "@/lib/today";
 import { setCheckOff } from "./actions";
+import { LookButton } from "./look";
 import { Star } from "./star";
+import { TaskIcon } from "./task-icon";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const WEEKDAYS_LONG = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 const weekday = (day: string) => (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7;
-const shortDate = (day: string) => `${day.slice(8, 10)}.${day.slice(5, 7)}`;
 const longDate = (day: string) =>
   `${WEEKDAYS_LONG[weekday(day)]} ${Number(day.slice(8, 10))} ${MONTHS[Number(day.slice(5, 7)) - 1]}`;
 
 export function TodayBoard({ name, board }: { name: string; board: Board }) {
+  const shown = board.selected?.tasks ?? [];
+  const approved = shown.filter((t) => t.state === "approved").length;
+  const ring = shown.length ? Math.round((approved / shown.length) * 100) : 0;
+
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col pb-8">
-      <header className="flex items-center justify-between gap-3 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-3">
-        <div>
-          <h1 className="text-[26px] leading-none font-extrabold">Hi {name}!</h1>
-          <p className="mt-1 text-sm font-semibold text-[#4B5A8C]">{longDate(board.today)}</p>
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col pb-10">
+      <header className="flex items-center gap-4 px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-(--mn-muted)">{longDate(board.today)}</p>
+          <h1 className="mt-0.5 truncate text-2xl font-bold tracking-tight">Hey, {name}</h1>
         </div>
-        {board.balance && <Balance {...board.balance} />}
+        <LookButton />
+        {board.balance && <Balance {...board.balance} ring={ring} />}
       </header>
       <WeekStrip board={board} />
       {board.selected ? (
@@ -37,29 +43,33 @@ export function TodayBoard({ name, board }: { name: string; board: Board }) {
   );
 }
 
-// Tapping swaps the Star count for its PLN value, and back.
-function Balance({ stars, groszePerStar }: { stars: number; groszePerStar: number }) {
+// Tapping swaps the Star count for its PLN value, and back. The ring fills with the
+// share of the shown day's Tasks that are approved.
+function Balance({ stars, groszePerStar, ring }: { stars: number; groszePerStar: number; ring: number }) {
   const [pln, setPln] = useState(false);
   return (
     <button
       onClick={() => setPln(!pln)}
       aria-label={pln ? "Show gwiazdki" : "Show money"}
-      className="flex min-w-27 flex-col items-center rounded-[22px] bg-[#FFC93C] px-4 pt-2 pb-1.5 shadow-[0_4px_0_#D99A00] active:translate-y-0.5"
+      style={{ "--p": ring } as React.CSSProperties}
+      className="mn-ring relative flex size-24 shrink-0 flex-col items-center justify-center rounded-full border border-(--mn-line) bg-(--mn-card) active:scale-95"
     >
       {pln ? (
         <>
-          <span className="text-[26px] leading-none font-extrabold">{formatPln(stars * groszePerStar)}</span>
-          <small className="text-xs font-semibold">
+          <span className="text-lg leading-none font-extrabold text-(--mn-acc-ink) tabular-nums">
+            {formatPln(stars * groszePerStar)}
+          </span>
+          <small className="mt-1 text-[10px] text-(--mn-muted)">
             {stars} {starsWord(stars)}
           </small>
         </>
       ) : (
         <>
-          <span className="flex items-center gap-1.5 text-[30px] leading-none font-extrabold">
-            <Star className="size-7" fill="#fff" />
+          <span className="flex items-center gap-1 text-[26px] leading-none font-extrabold text-(--mn-acc-ink) tabular-nums">
+            <Star className="size-5" />
             {stars}
           </span>
-          <small className="text-xs font-semibold">{starsWord(stars)}</small>
+          <small className="mt-1 text-[10px] text-(--mn-muted)">{starsWord(stars)}</small>
         </>
       )}
     </button>
@@ -68,22 +78,40 @@ function Balance({ stars, groszePerStar }: { stars: number; groszePerStar: numbe
 
 function WeekStrip({ board }: { board: Board }) {
   return (
-    <nav className="grid grid-cols-5 gap-1.5 px-3.5 pb-3.5">
+    <nav className="flex gap-1.5 px-4 pb-5">
       {board.week.map((d) => {
         const selected = board.selected?.day === d.day;
         const content = (
           <>
-            {d.waiting && <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-[#FF8A3D]" aria-label="waiting" />}
-            <b className="text-[13px]">{WEEKDAYS[weekday(d.day)]}</b>
-            <i className={`text-[11px] not-italic ${selected ? "text-[#C5D0FF]" : "text-[#4B5A8C]"}`}>{shortDate(d.day)}</i>
-            <span className="mt-0.5 flex items-center gap-0.5 text-[13px] font-bold">
-              {d.future ? " " : (<><Star className="size-3.5" />{d.stars}</>)}
+            {d.waiting && (
+              <span
+                className="absolute -top-1 -right-1 size-2.5 rounded-full border-2 border-(--mn-bg) bg-(--mn-wait) box-content"
+                aria-label="waiting"
+              />
+            )}
+            <b className={`text-[11px] font-semibold tracking-widest uppercase ${selected ? "opacity-60" : "text-(--mn-muted)"}`}>
+              {WEEKDAYS[weekday(d.day)]}
+            </b>
+            <span className="text-base font-bold tabular-nums">{Number(d.day.slice(8, 10))}</span>
+            <span className="flex h-1.5 gap-0.5" aria-label={d.future ? undefined : `${d.stars} ${starsWord(d.stars)}`}>
+              {Array.from({ length: d.tasks }, (_, i) => (
+                <i
+                  key={i}
+                  className={`size-1.5 rounded-full ${
+                    !d.future && i < d.stars ? "bg-(--acc)" : selected ? "bg-(--mn-muted)/50" : "bg-(--mn-line)"
+                  }`}
+                />
+              ))}
             </span>
           </>
         );
-        const cls = `relative flex flex-col items-center rounded-[14px] pt-1.5 pb-1 leading-tight ${
-          selected ? "bg-[#1E2A5A] text-white shadow-[0_3px_0_#0E163A]" : "bg-white shadow-[0_3px_0_#B9D6F2]"
-        } ${d.day === board.today ? "outline-3 outline-[#1E2A5A]" : ""} ${d.future ? "opacity-45" : ""}`;
+        const cls = `relative flex flex-1 flex-col items-center gap-1.5 rounded-2xl border py-2.5 ${
+          selected
+            ? "border-(--mn-ink) bg-(--mn-ink) text-(--mn-bg)"
+            : d.day === board.today
+              ? "border-(--mn-acc-ink) bg-(--mn-card)"
+              : "border-(--mn-line) bg-(--mn-card)"
+        } ${d.future ? "opacity-35" : ""}`;
         return d.future ? (
           <div key={d.day} className={cls}>{content}</div>
         ) : (
@@ -118,14 +146,14 @@ function DayTasks({ board, selected }: { board: Board; selected: NonNullable<Boa
 
   return (
     <>
-      <h2 className="flex items-baseline justify-between px-5 pb-2 text-xl font-extrabold">
+      <h2 className="flex items-center justify-between px-5 pb-3 text-lg font-bold">
         {isToday ? "Today" : WEEKDAYS_LONG[weekday(selected.day)]}
-        <small className="text-sm font-semibold text-[#4B5A8C]">
-          {done} of {tasks.length} done
+        <small className="rounded-full border border-(--mn-line) bg-(--mn-card) px-2.5 py-1 text-xs font-normal text-(--mn-muted) tabular-nums">
+          {done} / {tasks.length} done
         </small>
       </h2>
       {!board.balance ? (
-        <Note grey>Waiting for a new contract. Ask your parent!</Note>
+        <Note grey>Waiting for a new contract. Ask your parent.</Note>
       ) : !selected.canChange ? (
         <Note grey>This day can&apos;t be changed any more.</Note>
       ) : !isToday ? (
@@ -134,7 +162,7 @@ function DayTasks({ board, selected }: { board: Board; selected: NonNullable<Boa
           until 22:00.
         </Note>
       ) : null}
-      <div className="grid grid-cols-2 gap-3 px-4">
+      <div className="grid grid-cols-2 gap-2.5 px-4">
         {tasks.map((t) => (
           <Tile
             key={t.id}
@@ -148,11 +176,31 @@ function DayTasks({ board, selected }: { board: Board; selected: NonNullable<Boa
   );
 }
 
-const TILE: Record<TaskState, { box: string; corner?: string; label: string }> = {
-  not_done: { box: "bg-white border-dashed border-[#9FB7D9]", label: "Not done yet" },
-  checked_off: { box: "bg-[#FFE9A8] border-[#E3A600]", corner: "bg-[#E3A600]", label: "Waiting for a check" },
-  approved: { box: "bg-[#C8F2D8] border-[#2E9E5E]", corner: "bg-[#2E9E5E]", label: "Counted" },
-  rejected: { box: "bg-[#E4E8EF] border-[#C3CAD6] text-[#6B7590]", label: "Not counted" },
+const TILE: Record<TaskState, { box: string; accent: string; badge: string; label: string }> = {
+  not_done: {
+    box: "border-(--mn-line) bg-(--mn-card)",
+    accent: "text-(--mn-muted)",
+    badge: "border-(--mn-line)",
+    label: "Not done yet",
+  },
+  checked_off: {
+    box: "border-(--mn-wait)/60 bg-(--mn-wait)/10",
+    accent: "text-(--mn-wait)",
+    badge: "border-(--mn-wait) bg-(--mn-wait) text-(--mn-bg)",
+    label: "Waiting for a check",
+  },
+  approved: {
+    box: "border-(--acc)/55 bg-(--acc)/10",
+    accent: "text-(--mn-acc-ink)",
+    badge: "border-(--acc) bg-(--acc) text-[#1A1405]",
+    label: "Counted",
+  },
+  rejected: {
+    box: "border-(--mn-line) bg-(--mn-card) opacity-55",
+    accent: "text-(--mn-muted)",
+    badge: "border-(--mn-line) text-(--mn-muted)",
+    label: "Not counted",
+  },
 };
 
 function Tile({ task, popped, onTap }: { task: BoardTask; popped: boolean; onTap?: () => void }) {
@@ -162,23 +210,27 @@ function Tile({ task, popped, onTap }: { task: BoardTask; popped: boolean; onTap
       onClick={onTap}
       disabled={!onTap}
       aria-pressed={task.state !== "not_done"}
-      className={`relative flex min-h-32 flex-col gap-1.5 rounded-[20px] border-3 px-3 pt-3.5 pb-3 text-left transition-transform active:scale-[.97] disabled:active:scale-100 ${look.box} ${popped ? "animate-[pop_.35s]" : ""}`}
+      className={`relative flex min-h-31 flex-col gap-3.5 rounded-[20px] border p-3.5 text-left transition-transform active:scale-[.97] disabled:active:scale-100 ${look.box} ${popped ? "animate-[glow_.6s]" : ""}`}
     >
-      {look.corner && (
-        <span className={`absolute top-2.5 right-2.5 grid size-7 place-items-center rounded-full text-base font-extrabold text-white ${look.corner}`}>
-          {task.state === "approved" ? "✓" : "⏳"}
-        </span>
-      )}
-      <span className={`text-[38px] leading-none ${task.state === "rejected" ? "opacity-50 grayscale" : ""}`}>
-        {taskEmoji(task.icon)}
+      <TaskIcon icon={task.icon} className={`size-5.5 text-[22px] ${look.accent}`} />
+      <span className={`absolute top-3 right-3 grid size-6 place-items-center rounded-full border-[1.5px] ${look.badge}`}>
+        {task.state === "approved" ? (
+          <Check className="size-3.5" strokeWidth={3} />
+        ) : task.state === "checked_off" ? (
+          <Clock className="size-3.5" strokeWidth={2.5} />
+        ) : task.state === "rejected" ? (
+          <X className="size-3.5" strokeWidth={2.5} />
+        ) : null}
       </span>
-      <span className="text-[17px] leading-tight font-bold">{task.name}</span>
-      <span className="mt-auto flex items-center gap-1 text-[13px] font-bold">
-        {task.state === "approved" && (<><Star className="size-4.5" />+1 ·{" "}</>)}
+      <span className={`text-[15px] leading-tight font-semibold ${task.state === "rejected" ? "line-through" : ""}`}>
+        {task.name}
+      </span>
+      <span className={`mt-auto flex items-center gap-1 text-xs ${look.accent}`}>
+        {task.state === "approved" && (<><Star className="size-3.5" />+1 ·{" "}</>)}
         {look.label}
       </span>
       {popped && (
-        <span className="pointer-events-none absolute top-[30%] left-1/2 animate-[rise_.7s_forwards] text-3xl">⭐</span>
+        <Star className="pointer-events-none absolute top-3.5 right-4 size-6 animate-[rise_.7s_forwards] text-(--acc)" />
       )}
     </button>
   );
@@ -187,10 +239,10 @@ function Tile({ task, popped, onTap }: { task: BoardTask; popped: boolean; onTap
 function Weekend({ openFriday }: { openFriday: Board["openFriday"] }) {
   return (
     <>
-      <div className="mx-4 my-2 flex flex-col items-center gap-2.5 rounded-3xl bg-white px-5 py-7 text-center">
-        <div className="text-6xl leading-none">☀️</div>
-        <h2 className="text-[26px] font-extrabold">No school today!</h2>
-        <p className="font-semibold text-[#4B5A8C]">Enjoy the weekend.</p>
+      <div className="mx-4 mb-3 flex flex-col items-center gap-2 rounded-3xl border border-(--mn-line) bg-(--mn-card) px-5 py-8 text-center">
+        <Moon className="mb-1 size-10 text-(--mn-acc-ink)" strokeWidth={1.8} aria-hidden />
+        <h2 className="text-[22px] font-bold">No school today</h2>
+        <p className="text-(--mn-muted)">Enjoy the weekend.</p>
       </div>
       {openFriday && (
         <Note>
@@ -199,7 +251,7 @@ function Weekend({ openFriday }: { openFriday: Board["openFriday"] }) {
           <Link
             href={`/?day=${openFriday.day}`}
             replace
-            className="mt-2 block w-fit rounded-2xl bg-[#1E2A5A] px-4 py-2.5 font-bold text-white shadow-[0_3px_0_#0E163A]"
+            className="mt-2.5 block w-fit rounded-xl bg-(--acc) px-4 py-2.5 font-bold text-[#1A1405]"
           >
             Open Friday
           </Link>
@@ -212,8 +264,8 @@ function Weekend({ openFriday }: { openFriday: Board["openFriday"] }) {
 function Note({ children, grey = false }: { children: React.ReactNode; grey?: boolean }) {
   return (
     <div
-      className={`mx-4 mb-3 rounded-[14px] border-2 border-dashed px-3.5 py-2.5 text-[15px] leading-snug font-semibold ${
-        grey ? "border-[#AAB6CC] bg-[#EDF2F8] text-[#4B5A8C]" : "border-[#E3A600] bg-[#FFF1C2]"
+      className={`mx-4 mb-3 rounded-2xl border px-3.5 py-3 text-sm leading-snug ${
+        grey ? "border-(--mn-line) bg-(--mn-card) text-(--mn-muted)" : "border-(--mn-wait)/40 bg-(--mn-wait)/12"
       }`}
     >
       {children}
