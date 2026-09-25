@@ -6,7 +6,7 @@ import { useOptimistic, useState, useTransition } from "react";
 import type { Board, BoardTask } from "@/lib/child-board";
 import { addDays, formatPln, starsWord, type TaskState } from "@/lib/today";
 import { setCheckOff } from "./actions";
-import { LookPicker } from "./look";
+import { LookButton } from "./look";
 import { Star } from "./star";
 import { TaskIcon } from "./task-icon";
 
@@ -30,6 +30,7 @@ export function TodayBoard({ name, board }: { name: string; board: Board }) {
           <p className="text-xs text-(--mn-muted)">{longDate(board.today)}</p>
           <h1 className="mt-0.5 truncate text-2xl font-bold tracking-tight">Hey, {name}</h1>
         </div>
+        <LookButton />
         {board.balance && <Balance {...board.balance} ring={ring} />}
       </header>
       <WeekStrip board={board} />
@@ -38,7 +39,6 @@ export function TodayBoard({ name, board }: { name: string; board: Board }) {
       ) : (
         <Weekend openFriday={board.openFriday} />
       )}
-      <LookPicker />
     </main>
   );
 }
