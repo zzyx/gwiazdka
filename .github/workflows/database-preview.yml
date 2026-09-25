@@ -1,0 +1,32 @@
+# Pushes a PR's migrations (and the fake family in seed.sql) to gwiazdka-preview,
+# the Supabase project behind Vercel's preview deployments. If the preview
+# database drifts, reset it rather than repair it.
+name: Preview database
+
+on:
+  pull_request:
+    paths:
+      - supabase/**
+
+concurrency:
+  group: database-preview
+  cancel-in-progress: false
+
+jobs:
+  push:
+    # Secrets are not available to PRs from forks.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: >-
+          npx supabase db push --yes --include-seed
+          --project-ref "${{ secrets.SUPABASE_PREVIEW_PROJECT_REF }}"
+          --password "${{ secrets.SUPABASE_PREVIEW_DB_PASSWORD }}"

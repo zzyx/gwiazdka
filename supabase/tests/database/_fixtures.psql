@@ -1,0 +1,59 @@
+-- Shared fixture for the RLS tests: two families, a fixed clock, helpers to act as a user.
+-- Included by each test file with \ir; not a test itself.
+
+-- Family A: parent Pat with children Ada and Ben. Family B: parent Quinn with child Cy.
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-00000000a0a0', 'pat@example.com'),
+  ('00000000-0000-0000-0000-0000000000a1', 'ada@example.com'),
+  ('00000000-0000-0000-0000-0000000000a2', 'ben@example.com'),
+  ('00000000-0000-0000-0000-00000000b0b0', 'quinn@example.com'),
+  ('00000000-0000-0000-0000-0000000000b1', 'cy@example.com');
+
+insert into public.families (id) values
+  ('aaaaaaaa-0000-0000-0000-000000000000'),
+  ('bbbbbbbb-0000-0000-0000-000000000000');
+
+insert into public.parents (user_id, family_id) values
+  ('00000000-0000-0000-0000-00000000a0a0', 'aaaaaaaa-0000-0000-0000-000000000000'),
+  ('00000000-0000-0000-0000-00000000b0b0', 'bbbbbbbb-0000-0000-0000-000000000000');
+
+insert into public.children (id, family_id, user_id, name) values
+  ('c0000000-0000-0000-0000-0000000000a1', 'aaaaaaaa-0000-0000-0000-000000000000', '00000000-0000-0000-0000-0000000000a1', 'Ada'),
+  ('c0000000-0000-0000-0000-0000000000a2', 'aaaaaaaa-0000-0000-0000-000000000000', '00000000-0000-0000-0000-0000000000a2', 'Ben'),
+  ('c0000000-0000-0000-0000-0000000000b1', 'bbbbbbbb-0000-0000-0000-000000000000', '00000000-0000-0000-0000-0000000000b1', 'Cy');
+
+insert into public.tasks (id, child_id, name, icon, active_from) values
+  ('70000000-0000-0000-0000-0000000000a1', 'c0000000-0000-0000-0000-0000000000a1', 'Brush teeth', 'tooth', '2026-09-01'),
+  ('70000000-0000-0000-0000-0000000000a3', 'c0000000-0000-0000-0000-0000000000a1', 'Pack school bag', 'backpack', '2026-09-01'),
+  ('70000000-0000-0000-0000-0000000000a2', 'c0000000-0000-0000-0000-0000000000a2', 'Read 20 minutes', 'book', '2026-09-01'),
+  ('70000000-0000-0000-0000-0000000000b1', 'c0000000-0000-0000-0000-0000000000b1', 'Feed the cat', 'cat', '2026-09-01');
+
+-- Ada's Contract is open from 1 September; Cy's too. Ben has no open Contract.
+insert into public.contracts (id, child_id, starts_on, ends_on, grosze_per_star, weekly_bonus_stars) values
+  ('c7000000-0000-0000-0000-0000000000a1', 'c0000000-0000-0000-0000-0000000000a1', '2026-09-01', '2027-01-31', 50, 3),
+  ('c7000000-0000-0000-0000-0000000000b1', 'c0000000-0000-0000-0000-0000000000b1', '2026-09-01', '2027-01-31', 100, 3);
+
+-- Freeze the clock: Wednesday 23 September 2026, 10:00 in Warsaw.
+create or replace function private.clock() returns timestamptz language sql stable
+  as $$ select timestamptz '2026-09-23 10:00 Europe/Warsaw' $$;
+
+create function pg_temp.set_clock(at timestamptz) returns void language plpgsql as $$
+declare
+  was text := current_setting('role');
+begin
+  perform set_config('role', 'postgres', true);
+  execute format(
+    'create or replace function private.clock() returns timestamptz language sql stable as $f$ select %L::timestamptz $f$',
+    at);
+  perform set_config('role', was, true);
+end $$;
+
+create function pg_temp.act_as(uid uuid) returns void language sql as $$
+  select set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+  select set_config('role', 'authenticated', true);
+$$;
+
+create function pg_temp.act_as_admin() returns void language sql as $$
+  select set_config('role', 'postgres', true);
+  select set_config('request.jwt.claims', '', true);
+$$;
