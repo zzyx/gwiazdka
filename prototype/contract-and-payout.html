@@ -114,7 +114,13 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 .field .suffix{white-space:nowrap;color:#667085;font-size:14px}
 .field .hint{font-size:12px;color:#667085}
 .field .val{font-size:16px;font-weight:600;padding:6px 0}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.tlist{border:1px solid #E4E7EE;border-radius:12px;background:#fff;overflow:hidden}
+.trow{display:flex;align-items:center;gap:10px;padding:7px 10px;border-bottom:1px solid #F2F3F6;font-size:15px}
+.trow:last-child{border-bottom:0}
+.trow .e{font-size:20px;width:26px;text-align:center}
+.trow .nm{flex:1;min-width:0}
+.trm{border:0;background:#F1F2F5;color:#667085;border-radius:8px;width:30px;height:30px}
 .errs{background:#FDE3E3;color:#B42318;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600;line-height:1.4}
 .preview{background:#F2F5FF;border-radius:12px;padding:10px 12px;font-size:13px;color:#344054;line-height:1.45}
 .preview b{color:#1F2430}
@@ -284,12 +290,13 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 <div class="wrap">
   <div class="side">
     <div><h1>Contract and Payout screens</h1></div>
-    <p>A rough, clickable prototype of the parent's Contract and Payout screens, in three layouts. Use the arrows in the bottom bar (or ← →) to switch. All three share the same sample data: Ola has an open Contract with two days still waiting for approval; Tymek has no open Contract. Everything responds: edit dates, close and pay out, start the next Contract, create one for Tymek. Children, dates, rates and balances are sample data.</p>
+    <p>A rough, clickable prototype of the parent's Contract and Payout screens, in three layouts. Use the arrows in the bottom bar (or ← →) to switch. All three share the same sample data: Ola has an open Contract with two days still waiting for approval; Tymek has no open Contract. Everything responds. To build a Contract, pick Tymek and tap “Create a Contract”: dates, Tasks, price per gwiazdka and Weekly bonus in one form. You can also edit Ola's Contract, close and pay it out, and start the next one. Children, dates, rates and balances are sample data.</p>
     <div class="ctl" id="ctl"></div>
     <div class="judge">
       <h2>What to react to</h2>
       <ol>
         <li><b>Layout:</b> which one fits? A puts each child on their own page with pop-up sheets. B draws each child's Contracts as a timeline and opens full pages. C shows both children on one desk and does everything inline, with the payout as a receipt. Mixing is fine.</li>
+        <li><b>Building a Contract:</b> create one for Tymek. Is one form with dates, Tasks, price and bonus right? Tasks can still be changed while the Contract is open (tap Edit); price and bonus can't.</li>
         <li><b>Close &amp; pay out:</b> close Ola's Contract. Is the pending-days warning clear, and is it right to approve from there?</li>
         <li><b>The amount:</b> does it show enough (Stars from Tasks, Weekly bonuses, rate) before you confirm?</li>
         <li><b>Start next contract:</b> it starts the next School day, with the same rate and bonus, until the end of that semester. Right defaults?</li>
@@ -369,7 +376,7 @@ function seed(){
   for (let m = monday(open.start); add(m,4) < t && add(m,4) <= open.end; m = add(m,7)){
     if (hash(m)%4 !== 0) open.bonuses.push({week:m, stars:open.bonus});
   }
-  S = {nextId:1, contracts:[
+  S = {nextId:1, tasks:{ola:TASKS.map(t=>[...t]), tymek:[['🛏️','Make the bed'],['🪥','Brush teeth'],['🎒','Pack the school bag'],['🎹','Practise piano']]}, contracts:[
     {id:'o1',kid:'ola',start:'2025-09-01',end:'2026-01-30',rate:50,bonus:2,payout:{date:'2026-01-30',task:355,bonus:22,stars:377,amount:18850,pending:0}},
     {id:'o2',kid:'ola',start:'2026-02-02',end:'2026-06-26',rate:50,bonus:3,payout:{date:'2026-06-26',task:372,bonus:39,stars:411,amount:20550,pending:0}},
     {id:'t1',kid:'tymek',start:'2026-02-02',end:'2026-06-26',rate:40,bonus:2,payout:{date:'2026-06-27',task:296,bonus:22,stars:318,amount:12720,pending:1}},
@@ -414,7 +421,7 @@ function prefill(kid){
   const t = today(), last = lastOf(kid);
   let s = last ? nextSchool(last.end) : t;
   if (s < t) s = isSchool(t) ? t : nextSchool(t);
-  return {start:s, end:semFor(s)[1], rate:((last?last.rate:50)/100).toFixed(2), bonus:String(last?last.bonus:3)};
+  return {tasks:S.tasks[kid].map(t=>[...t]), newE:'', newN:'', start:s, end:semFor(s)[1], rate:((last?last.rate:50)/100).toFixed(2), bonus:String(last?last.bonus:3)};
 }
 function parseRate(v){ const m = String(v).trim().replace(',','.').match(/^(\d+)(?:\.(\d{1,2}))?$/); if (!m) return null; return +m[1]*100 + +((m[2]||'0')+'0').slice(0,2); }
 function validate(f, kid, c){
@@ -428,11 +435,13 @@ function validate(f, kid, c){
     const r = parseRate(f.rate); if (!r) e.push('Enter the rate in złoty, e.g. 0.50.');
     if (!/^\d{1,2}$/.test(String(f.bonus).trim())) e.push('Enter the Weekly bonus as a whole number of gwiazdki (0 for none).');
   }
+  if (!(f.tasks||[]).length) e.push('Add at least one Task.');
   if (!schoolDays(f.start,f.end).length && f.end>=f.start) e.push('These dates contain no School days.');
   return e;
 }
 function applyForm(fl){
   const f = fl.form;
+  S.tasks[fl.kid] = f.tasks.map(t=>[...t]);
   if (fl.kind==='edit'){ const c = byId(fl.cid); c.start = f.start; c.end = f.end; return c; }
   const c = {id:'n'+(S.nextId++), kid:fl.kid, start:f.start, end:f.end, rate:parseRate(f.rate), bonus:+f.bonus, payout:null, days:{}, bonuses:[]};
   S.contracts.push(c); return c;
@@ -441,8 +450,8 @@ function potential(f){
   if (!f.start || !f.end || f.end < f.start) return '';
   const sd = schoolDays(f.start,f.end), weeks = new Set(sd.map(monday)).size;
   const r = parseRate(f.rate) ?? 0, b = +f.bonus || 0;
-  const max = sd.length*TASKS.length + weeks*b;
-  return {sd:sd.length, weeks, maxTask:sd.length*TASKS.length, maxBonus:weeks*b, max, maxZl:max*r};
+  const nt = (f.tasks||[]).length, max = sd.length*nt + weeks*b;
+  return {sd:sd.length, weeks, nt, maxTask:sd.length*nt, maxBonus:weeks*b, max, maxZl:max*r};
 }
 
 /* ---------- shared form fields ---------- */
@@ -467,6 +476,9 @@ function fields(fl){
       <div class="field"><label for="f-bonus">Weekly bonus</label><div class="row"><input id="f-bonus" inputmode="numeric" value="${esc(f.bonus)}"><span class="suffix">gw.</span></div><div class="hint">at most once a week</div></div>
     </div>`;
   }
+  h += `<div class="field"><label for="f-tname">Tasks · each approved Task earns 1 gwiazdka</label><div class="tlist">${f.tasks.map((t,i)=>`<div class="trow"><span class="e">${esc(t[0])}</span><span class="nm">${esc(t[1])}</span><button class="trm" data-act="trm" data-i="${i}" aria-label="Remove ${esc(t[1])}">✕</button></div>`).join('') || '<div class="trow muted">No Tasks yet.</div>'}</div>
+    <div class="row"><input id="f-temoji" value="${esc(f.newE||'')}" placeholder="⭐" aria-label="Icon" style="width:52px;text-align:center"><input id="f-tname" value="${esc(f.newN||'')}" placeholder="New Task, e.g. Feed the cat"><button class="btn sec" style="padding:9px 12px" data-act="tadd">Add</button></div>
+    ${editing ? '<div class="hint">Changes count from the next School day. Days already done keep their Tasks.</div>' : '<div class="hint">The same list every School day.</div>'}</div>`;
   h += `<div class="preview" id="f-preview">${previewText(fl)}</div>`;
   if (fl.errors && fl.errors.length) h += `<div class="errs">${fl.errors.map(esc).join('<br>')}</div>`;
   return h + `</div>`;
@@ -481,6 +493,8 @@ function previewText(fl){
 function readForm(){
   if (!U.flow || !U.flow.form) return;
   for (const k of ['start','end','rate','bonus']){ const el = document.getElementById('f-'+k); if (el) U.flow.form[k] = el.value; }
+  const e = document.getElementById('f-temoji'), n = document.getElementById('f-tname');
+  if (e) U.flow.form.newE = e.value; if (n) U.flow.form.newN = n.value;
 }
 
 /* ---------- pending-day list (A sheet) ---------- */
@@ -522,9 +536,9 @@ function variantA(){
       <div class="aSplit">${taskStars(c)} from Tasks · ${bonusStars(c)} from ${c.bonuses.length} Weekly bonuses</div>
       <div class="track"><i style="width:${pr.pct}%"></i></div>
       <div class="aProg num"><span>School day ${pr.done} of ${pr.all}</span><span>${pr.left ? pr.left+' to go' : 'Finished'}</span></div>
-      <dl class="aFacts"><div><dt>Rate</dt><dd>${zl(c.rate)} per gwiazdka</dd></div><div><dt>Weekly bonus</dt><dd>${G(c.bonus)}</dd></div></dl>
+      <dl class="aFacts"><div><dt>Rate</dt><dd>${zl(c.rate)} per gwiazdka</dd></div><div><dt>Weekly bonus</dt><dd>${G(c.bonus)}</dd></div><div><dt>Tasks</dt><dd>${S.tasks[c.kid].map(t=>t[0]).join(' ')} · ${S.tasks[c.kid].length} a day</dd></div></dl>
       ${pc.length ? `<div class="warn">⏳ ${pendingCount(c)} Tasks on ${pc.length} ${pc.length===1?'day':'days'} still wait for approval.</div>` : ''}
-      ${status(c)==='soon' ? `<button class="btn sec" data-act="edit" data-c="${c.id}">Edit dates</button>` : `<div class="aActs"><button class="btn sec" data-act="edit" data-c="${c.id}">Edit dates</button><button class="btn pri" data-act="close" data-c="${c.id}">Close &amp; pay out</button></div>`}
+      ${status(c)==='soon' ? `<button class="btn sec" data-act="edit" data-c="${c.id}">Edit</button>` : `<div class="aActs"><button class="btn sec" data-act="edit" data-c="${c.id}">Edit</button><button class="btn pri" data-act="close" data-c="${c.id}">Close &amp; pay out</button></div>`}
     </div>`;
   } else {
     h += `<div class="aEmpty"><h3>No open Contract</h3><p>${kidName(k)} can open Today but can't check anything off until a new Contract starts.</p>
@@ -554,9 +568,9 @@ function sheetA(){
   const fl = U.flow; if (!fl) return '';
   let h = '';
   if (fl.kind==='create' || fl.kind==='next' || fl.kind==='edit'){
-    const title = fl.kind==='edit' ? 'Edit dates' : fl.kind==='next' ? 'Start next Contract' : 'New Contract';
+    const title = fl.kind==='edit' ? 'Edit Contract' : fl.kind==='next' ? 'Start next Contract' : 'New Contract';
     h = `<h3>${title}</h3><div class="sub">${kidName(fl.kid)}${fl.kind==='next'?' · starts from 0 gwiazdek, nothing carried over':''}</div>${fields(fl)}
-      <div class="btns"><button class="btn pri" data-act="save">${fl.kind==='edit'?'Save dates':'Start Contract'}</button><button class="btn ghost" data-act="cancel">Cancel</button></div>`;
+      <div class="btns"><button class="btn pri" data-act="save">${fl.kind==='edit'?'Save':'Start Contract'}</button><button class="btn ghost" data-act="cancel">Cancel</button></div>`;
   } else if (fl.kind==='close'){
     const c = byId(fl.cid), pd = pendingDays(c);
     if (fl.step==='pending'){
@@ -624,7 +638,7 @@ function detailB(c){
   let h = `<div class="pX">${navB(kidName(c.kid)+"'s Contract",'home')}<div class="bBody">
     <div class="bHero"><div style="display:flex;justify-content:space-between;align-items:center">${statusPill(c)}<span class="muted" style="font-size:14px">${range(c.start,c.end)}</span></div>
       <div class="big num"><b>${stars(c)}</b><span class="muted">${gw(stars(c))}</span><span class="zl">${zl(value(c))}</span></div>
-      <div class="muted" style="font-size:13px">${zl(c.rate)} per gwiazdka · Weekly bonus ${G(c.bonus)} · both fixed</div>
+      <div class="muted" style="font-size:13px">${zl(c.rate)} per gwiazdka · Weekly bonus ${G(c.bonus)} · both fixed</div><div style="font-size:14px">Tasks: ${S.tasks[c.kid].map(t=>t[0]+' '+esc(t[1])).join(', ')}</div>
       <div class="track"><i style="width:${pr.pct}%"></i></div><div class="muted num" style="font-size:13px">School day ${pr.done} of ${pr.all}</div></div>
     <div class="lbl-up" style="margin:4px 6px -6px">Week by week</div><div class="bWeeks">`;
   const t = today(), end = t < c.end ? t : c.end;
@@ -638,22 +652,22 @@ function detailB(c){
     h += `<div class="bWeek num"><span><b>${fmtS(m)} – ${fmtS(add(m,4))}</b><small>${wt?`⏳ ${wt} waiting`:`${ds.length} School days`}</small></span><span>${ts} ${STAR}</span>
       <span class="bon ${b?'y':'n'}">${b?`+${b.stars} bonus`:fin?'no bonus':'this week'}</span></div>`;
   }
-  h += `</div></div><div class="bDock"><button class="btn sec" data-act="edit" data-c="${c.id}">Change dates</button>${status(c)==='soon'?'':`<button class="btn pri" data-act="close" data-c="${c.id}">Close &amp; pay out</button>`}</div></div>`;
+  h += `</div></div><div class="bDock"><button class="btn sec" data-act="edit" data-c="${c.id}">Edit</button>${status(c)==='soon'?'':`<button class="btn pri" data-act="close" data-c="${c.id}">Close &amp; pay out</button>`}</div></div>`;
   return h;
 }
 function pageB(){
   const fl = U.flow;
   if (fl.kind==='create' || fl.kind==='next' || fl.kind==='edit'){
-    const title = fl.kind==='edit' ? 'Change dates' : fl.kind==='next' ? 'Next Contract' : 'New Contract';
+    const title = fl.kind==='edit' ? 'Edit Contract' : fl.kind==='next' ? 'Next Contract' : 'New Contract';
     const p = potential(fl.kind==='edit' ? Object.assign({}, fl.form, {rate:(byId(fl.cid).rate/100).toFixed(2), bonus:String(byId(fl.cid).bonus), start: fl.form.start || byId(fl.cid).start}) : fl.form);
     return `<div class="pX">${navB(title,'cancel')}<div class="bBody">
       <div class="muted" style="font-size:14px">${kidName(fl.kid)}${fl.kind==='next'?' · starts from 0 gwiazdek':''}</div>
       ${fields(fl)}
       ${p ? `<div class="bSum num"><div class="lbl-up">Most this Contract can pay</div>
-        <div style="display:flex;justify-content:space-between"><span>${p.sd} School days × ${TASKS.length} Tasks</span><b>${p.maxTask}</b></div>
+        <div style="display:flex;justify-content:space-between"><span>${p.sd} School days × ${p.nt} Tasks</span><b>${p.maxTask}</b></div>
         <div style="display:flex;justify-content:space-between"><span>${p.weeks} Weekly bonuses × ${fl.kind==='edit'?byId(fl.cid).bonus:(+fl.form.bonus||0)}</span><b>${p.maxBonus}</b></div>
         <div style="display:flex;justify-content:space-between;border-top:1px solid #E4E7EE;padding-top:6px"><span>${G(p.max)}</span><b>${zl(p.maxZl)}</b></div></div>` : ''}
-      </div><div class="bDock"><button class="btn pri" data-act="save">${fl.kind==='edit'?'Save dates':'Start Contract'}</button></div></div>`;
+      </div><div class="bDock"><button class="btn pri" data-act="save">${fl.kind==='edit'?'Save':'Start Contract'}</button></div></div>`;
   }
   const c = byId(fl.cid);
   const steps = ['Pending days','Amount','Paid'], idx = fl.kind==='paid' ? 2 : fl.step==='pending' ? 0 : 1;
@@ -703,7 +717,7 @@ function variantC(){
       const pr = progress(c), pc = pendingCount(c);
       h += `<span class="nm">${k.name}<small>${statusPill(c)}</small></span><span class="zl num">${zl(value(c))}<small>${G(stars(c))}</small></span></div>
         <div class="cMeter" aria-label="${pr.done} of ${pr.all} School days">${Array.from({length:20},(_,i)=>`<i class="${i < Math.round(pr.pct/5) ? 'f':''}"></i>`).join('')}</div>
-        <div class="cMeta num"><button class="cDates" data-act="edit" data-c="${c.id}">${range(c.start,c.end)} ✎</button><span>${zl(c.rate)}/gw. · bonus ${c.bonus}</span></div>`;
+        <div class="cMeta num"><button class="cDates" data-act="edit" data-c="${c.id}">${range(c.start,c.end)} ✎</button><span>${zl(c.rate)}/gw. · bonus ${c.bonus} · ${S.tasks[c.kid].length} Tasks</span></div>`;
       if (!fl) h += `<div class="cActs">${pc?`<span class="warn" style="flex:1.2;padding:8px 10px;font-size:13px">⏳ ${pc} waiting</span>`:''}${status(c)==='soon' ? `<span class="muted" style="font-size:13px">Nothing to pay out before it starts.</span>` : `<button class="btn pri" data-act="close" data-c="${c.id}">Close &amp; pay out</button>`}</div>`;
     } else {
       const last = lastOf(k.id);
@@ -727,7 +741,7 @@ function variantC(){
 }
 function inlineC(fl){
   if (fl.kind==='create' || fl.kind==='next' || fl.kind==='edit'){
-    const t = fl.kind==='edit' ? 'Change dates' : fl.kind==='next' ? 'Next Contract, from 0 gwiazdek' : 'New Contract';
+    const t = fl.kind==='edit' ? 'Edit Contract' : fl.kind==='next' ? 'Next Contract, from 0 gwiazdek' : 'New Contract';
     return `<b>${t}</b>${fields(fl)}<div style="display:flex;gap:8px"><button class="btn ghost" style="flex:1" data-act="cancel">Cancel</button><button class="btn pri" style="flex:1.4" data-act="save">${fl.kind==='edit'?'Save':'Start'}</button></div>`;
   }
   const c = byId(fl.cid);
@@ -816,7 +830,7 @@ for (const id of ['screen','overlay']){
       case 'page': U.page = x.c; break;
       case 'home': U.page = null; U.flow = null; break;
       case 'create': U.flow = {kind:'create', kid:x.k, form:prefill(x.k)}; break;
-      case 'edit': { const c = byId(x.c); U.flow = {kind:'edit', kid:c.kid, cid:c.id, form:{start:c.start, end:c.end}}; break; }
+      case 'edit': { const c = byId(x.c); U.flow = {kind:'edit', kid:c.kid, cid:c.id, form:{start:c.start, end:c.end, tasks:S.tasks[c.kid].map(t=>[...t]), newE:'', newN:''}}; break; }
       case 'close': { const c = byId(x.c); U.flow = {kind:'close', kid:c.kid, cid:c.id, step: pendingDays(c).length ? 'pending' : 'confirm'}; break; }
       case 'step': fl.step = x.s; break;
       case 'appday': approveDay(byId(x.c), x.d); break;
@@ -830,6 +844,8 @@ for (const id of ['screen','overlay']){
         if (!fl.errors.length){ const r = applyForm(fl); U.toast = fl.kind==='edit' ? 'Dates saved' : `Contract started for ${kidName(fl.kid)}: ${range(r.start,r.end)}`; U.flow = null; }
         break; }
       case 'cancel': U.flow = null; break;
+      case 'tadd': { const f = fl.form, n = (f.newN||'').trim(); if (n){ f.tasks.push([(f.newE||'').trim()||'⭐', n]); f.newE=''; f.newN=''; } break; }
+      case 'trm': fl.form.tasks.splice(+x.i,1); break;
     }
     render();
     if (scrollTop) toTop();
