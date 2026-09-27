@@ -1,0 +1,431 @@
+<title>Gwiazdki All-Done Day</title>
+<!--
+  PROTOTYPE, throwaway. Answers zzyx/gwiazdka#28: how does a day in the child's week strip stand out
+  once all its Tasks are done?
+  Three looks on the Midnight Today screen as shipped (arrows from #37, Contract button from #34),
+  switchable from the floating bar (or ← →):
+    A  Gold day: the day fills with the accent colour, a star replaces the dots
+    B  Big star: the date sits inside a big star
+    C  Green check: green fill with a check (Misha's first idea)
+  Plus how today reacts when its last Task is checked off: Off, Burst, or Card.
+  Defaults taken: "all done" = every Task checked off or counted, none Not counted; two stages
+  (done and waiting = outline, all counted = full); days outside a Contract and future days never
+  light up; past weeks light up the same way.
+  State is in memory only. Sample data (Kuba, his Tasks) is made up.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap">
+<style>
+/* ---------- page around the phone ---------- */
+:root{
+  --bg:#EEF0F5; --panel:#FFFFFF; --ink:#1C2030; --muted:#5B6278; --line:#D9DDE7;
+  --accent:#2F5BEA; --chip:#E4E8F3; --bar:#141824; --bar-ink:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#12141B; --panel:#1C1F2A; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+    --accent:#8FA8FF; --chip:#262B3A; --bar:#F1F3F9; --bar-ink:#12141B;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#12141B; --panel:#1C1F2A; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+  --accent:#8FA8FF; --chip:#262B3A; --bar:#F1F3F9; --bar-ink:#12141B;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:Figtree,system-ui,-apple-system,sans-serif;font-size:14px;padding-inline:16px;padding-block:20px 96px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1040px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:32px;align-items:start}
+.side{display:flex;flex-direction:column;gap:18px;max-width:520px}
+.side h1{font-size:24px;line-height:1.2;margin:0;text-wrap:balance}
+.side p{margin:0;color:var(--muted);line-height:1.5}
+.ctl{display:flex;flex-direction:column;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ctl-row>span{width:84px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.seg{display:inline-flex;background:var(--chip);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:8px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.sw{display:inline-flex;gap:6px}
+.sw button{width:26px;height:26px;border-radius:50%;border:2px solid transparent;padding:0}
+.sw button[aria-pressed="true"]{border-color:var(--ink)}
+.reset{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 12px;font-weight:600}
+.reset.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.reset:disabled{opacity:.4;cursor:default}
+.about{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.about h2{margin:0;font-size:16px}
+.about ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;color:var(--muted);line-height:1.45}
+.about b{color:var(--ink)}
+.phone-col{display:flex;flex-direction:column;gap:12px;align-items:center}
+.phone{width:390px;max-width:100%;height:780px;border-radius:44px;border:10px solid #0D0F16;background:#0D0F16;overflow:hidden;position:relative;box-shadow:0 20px 50px rgba(20,24,40,.25)}
+.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;border-radius:34px}
+.hint{font-size:12px;color:var(--muted);text-align:center;max-width:360px;line-height:1.45}
+@media (max-width:860px){ .wrap{grid-template-columns:1fr} .phone-col{order:-1} .side{max-width:none} }
+@media (max-width:480px){
+  body{padding-inline:8px}
+  .switcher .lbl small{display:none}
+  .phone{border-width:0;border-radius:18px;height:720px;box-shadow:none}
+  .screen{border-radius:18px}
+}
+.switcher{position:fixed;left:50%;transform:translateX(-50%);bottom:0;margin-bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;align-items:center;gap:4px;background:var(--bar);color:var(--bar-ink);border-radius:999px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:calc(100% - 24px)}
+.switcher button{border:0;background:transparent;color:inherit;width:40px;height:40px;border-radius:50%;font-size:18px;flex:none}
+.switcher button:hover{background:rgba(127,127,127,.25)}
+.switcher .lbl{padding:0 10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switcher .lbl small{opacity:.65;font-weight:500}
+
+/* ---------- the child's app: Midnight, as shipped ---------- */
+.app{--bgB:#0A0E1C;--cardB:#141A2E;--card2B:#1B2340;--inkB:#EEF1FF;--mutB:#8A93B8;--lineB:#252E4D;--acc:#FFC54D;--accInk:var(--acc);--wait:#7FA7FF;--ok:#3DDC97;--okInk:#3DDC97;
+  min-height:100%;padding-bottom:36px;position:relative;
+  background:radial-gradient(120% 50% at 85% -10%,color-mix(in srgb,var(--acc) 14%,transparent),transparent 60%),var(--bgB);
+  color:var(--inkB);font-family:Sora,system-ui,sans-serif;color-scheme:dark}
+.app.light{--bgB:#EEF0F7;--cardB:#FFFFFF;--card2B:#F4F5FA;--inkB:#10142A;--mutB:#5E6688;--lineB:#DCE0EE;--wait:#3867E0;--ok:#22B573;--okInk:#12824F;--accInk:color-mix(in oklab,var(--acc),#10142A 45%);color-scheme:light}
+.app svg.i{width:1em;height:1em;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.app svg.st{width:1em;height:1em;display:inline-block;vertical-align:-.12em;flex:none}
+.app button{border:0;background:none;padding:0;text-align:left}
+.status{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font:600 14px Figtree,system-ui,sans-serif}
+.app header{padding:6px 20px 16px;display:flex;align-items:center;gap:12px}
+.who{flex:1;min-width:0}
+.who small{display:block;font-size:12px;color:var(--mutB)}
+.who h1{margin:2px 0 0;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.hbtn{width:40px;height:40px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;color:var(--mutB);font-size:18px;position:relative}
+.bal{display:flex!important;flex-direction:column;align-items:center;justify-content:center;width:96px;height:96px;border-radius:50%;background:var(--cardB)!important;border:1px solid var(--lineB)!important;position:relative;flex:none}
+.bal::before{content:"";position:absolute;inset:-1px;border-radius:50%;background:conic-gradient(var(--acc) calc(var(--p)*1%),transparent 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))}
+.bal b{font-size:26px;font-weight:800;color:var(--accInk);display:flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums;line-height:1}
+.bal small{font-size:10px;color:var(--mutB);margin-top:3px}
+
+/* week bar and strip (as shipped in #37) */
+.wbar{display:flex;align-items:center;gap:8px;padding:0 16px 10px}
+.wbar .t{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center}
+.wbar .t b{font-size:15px;font-weight:700}
+.wbar .t small{font-size:12px;color:var(--mutB)}
+.arrow{width:36px;height:36px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;font-size:17px;flex:none}
+.arrow:disabled{opacity:.3;cursor:default}
+.week{display:flex;gap:6px;padding:0 16px 18px}
+.wd{flex:1;display:flex!important;flex-direction:column;align-items:center;gap:6px;padding:10px 0!important;border-radius:16px;background:var(--cardB)!important;border:1px solid var(--lineB)!important;position:relative;cursor:pointer;text-align:center!important}
+.wd .l{font-size:11px;color:var(--mutB);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.wd .n{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;height:22px;display:grid;place-items:center}
+.wd .pips{display:flex;gap:2px;height:12px;align-items:center}
+.wd .pips i{width:5px;height:5px;border-radius:50%;background:var(--lineB)}
+.wd .pips i.on{background:var(--acc)}
+.wd.today{border-color:var(--accInk)!important}
+.wd.sel{background:var(--inkB)!important;color:var(--bgB);border-color:var(--inkB)!important}
+.wd.sel .l{color:color-mix(in srgb,var(--bgB) 60%,transparent)}
+.wd.sel .pips i:not(.on){background:color-mix(in srgb,var(--mutB) 50%,transparent)}
+.wd.fut{opacity:.35;cursor:default}
+.wd .dot{position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:var(--wait);border:2px solid var(--bgB)}
+.wd .mark{font-size:13px;display:flex;align-items:center}
+
+/* ---- A: Gold day ---- */
+.vA .wd.part{border:1.5px solid var(--acc)!important;background:color-mix(in srgb,var(--acc) 10%,var(--cardB))!important}
+.vA .wd.part .mark{color:var(--accInk)}
+.vA .wd.full{background:var(--acc)!important;border-color:var(--acc)!important;color:#1A1405;box-shadow:0 4px 16px color-mix(in srgb,var(--acc) 35%,transparent)}
+.vA .wd.full .l{color:rgba(26,20,5,.62)}
+.vA .wd.sel.part{background:var(--inkB)!important;border-color:var(--inkB)!important}
+.vA .wd.sel.part .mark{color:var(--acc)}
+.vA .wd.sel.full{outline:2px solid var(--inkB);outline-offset:2px}
+
+/* ---- B: Big star ---- */
+.vB .wd .n{height:34px;width:34px}
+.vB .wd .n .bigst{position:absolute;inset:0;width:34px;height:34px}
+.vB .wd .n{position:relative}
+.vB .wd .n em{position:relative;font-style:normal;font-size:13px;font-weight:800;padding-top:3px}
+.vB .wd.full .n{color:#1A1405}
+.vB .wd.full .bigst{fill:var(--acc);stroke:var(--acc);filter:drop-shadow(0 2px 6px color-mix(in srgb,var(--acc) 45%,transparent))}
+.vB .wd.part .bigst{fill:color-mix(in srgb,var(--acc) 12%,transparent);stroke:var(--acc)}
+.vB .wd.part .n{color:var(--accInk)}
+.vB .wd.sel.part .n{color:var(--acc)}
+.vB .wd .bigst{stroke-width:1.6;stroke-linejoin:round}
+
+/* ---- C: Green check ---- */
+.vC .wd.part{border:1.5px solid var(--ok)!important;background:color-mix(in srgb,var(--ok) 10%,var(--cardB))!important}
+.vC .wd.part .mark{color:var(--okInk)}
+.vC .wd.full{background:var(--ok)!important;border-color:var(--ok)!important;color:#05261A;box-shadow:0 4px 16px color-mix(in srgb,var(--ok) 30%,transparent)}
+.vC .wd.full .l{color:rgba(5,38,26,.62)}
+.vC .wd.sel.part{background:var(--inkB)!important;border-color:var(--inkB)!important}
+.vC .wd.sel.part .mark{color:var(--ok)}
+.vC .wd.sel.full{outline:2px solid var(--inkB);outline-offset:2px}
+.vC .pill.done{color:var(--okInk);border-color:color-mix(in srgb,var(--ok) 55%,transparent)}
+.vC .dcard.full{border-color:color-mix(in srgb,var(--ok) 55%,transparent);background:color-mix(in srgb,var(--ok) 10%,var(--cardB))}
+.vC .dcard .big{color:var(--okInk)}
+
+/* day */
+.dh{display:flex;justify-content:space-between;align-items:center;padding:0 20px 12px}
+.dh h2{margin:0;font-size:18px;font-weight:700}
+.dh h2 small{font-size:13px;font-weight:500;color:var(--mutB);margin-left:6px}
+.pill{font-size:12px;color:var(--mutB);background:var(--cardB);border:1px solid var(--lineB);border-radius:999px;padding:4px 10px;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:5px}
+.pill.done{color:var(--accInk);border-color:color-mix(in srgb,var(--acc) 55%,transparent);font-weight:600}
+.note{margin:0 16px 12px;padding:11px 14px;border-radius:14px;font-size:13px;line-height:1.45;background:var(--cardB);border:1px solid var(--lineB);color:var(--mutB)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
+.tile{position:relative;display:flex!important;flex-direction:column;gap:14px;min-height:118px;padding:14px!important;border-radius:20px;background:var(--cardB)!important;border:1px solid var(--lineB)!important}
+.tile[disabled]{cursor:default}
+.tile .ic{font-size:22px;color:var(--mutB)}
+.tile b{font-size:15px;font-weight:600;line-height:1.25}
+.tile small{margin-top:auto;font-size:12px;color:var(--mutB);display:flex;align-items:center;gap:5px}
+.tile .bdg{position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;border:1.5px solid var(--lineB)}
+.tile.checked_off{border-color:color-mix(in srgb,var(--wait) 60%,transparent)!important;background:color-mix(in srgb,var(--wait) 10%,var(--cardB))!important}
+.tile.checked_off .ic,.tile.checked_off small{color:var(--wait)}
+.tile.checked_off .bdg{background:var(--wait);border-color:var(--wait);color:var(--bgB)}
+.tile.approved{border-color:color-mix(in srgb,var(--acc) 55%,transparent)!important;background:color-mix(in srgb,var(--acc) 9%,var(--cardB))!important}
+.tile.approved .ic,.tile.approved small{color:var(--accInk)}
+.tile.approved .bdg{background:var(--acc);border-color:var(--acc);color:#1A1405}
+.tile.rejected b{text-decoration:line-through;color:var(--mutB)}
+.tile.rejected{opacity:.75}
+
+/* celebration: card */
+.dcard{margin:0 16px 12px;padding:14px 16px;border-radius:18px;background:var(--cardB);border:1px solid var(--lineB);display:flex;gap:14px;align-items:center;animation:rise .3s ease-out}
+.dcard.full{border-color:color-mix(in srgb,var(--acc) 55%,transparent);background:color-mix(in srgb,var(--acc) 10%,var(--cardB))}
+.dcard .big{font-size:30px;color:var(--accInk);flex:none}
+.dcard div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.dcard b{font-size:15px}
+.dcard p{margin:0;font-size:13px;color:var(--mutB);line-height:1.45}
+@keyframes rise{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+
+/* celebration: burst */
+.wd.pop{animation:pop .55s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.22)}100%{transform:scale(1)}}
+.fx{position:absolute;inset:0;pointer-events:none;z-index:8;overflow:hidden}
+.fx i{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;color:var(--fxc);animation:fly .9s cubic-bezier(.2,.7,.3,1) forwards}
+.fx i svg{width:100%;height:100%;display:block}
+@keyframes fly{0%{transform:translate(0,0) scale(.4) rotate(0);opacity:1}70%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1) rotate(var(--r));opacity:0}}
+.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:8px;padding:11px 16px;border-radius:999px;background:var(--inkB);color:var(--bgB);font:600 13px Sora,system-ui,sans-serif;white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.35);animation:toast 3s ease forwards}
+.toast svg{width:15px;height:15px;color:var(--c);flex:none}
+@keyframes toast{0%{opacity:0;transform:translate(-50%,10px)}10%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,0)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.fx{display:none}.toast{opacity:1}}
+</style>
+
+<div class="wrap">
+  <div class="side">
+    <h1>How does a finished day stand out?</h1>
+    <p>Three looks for a day in Kuba's week strip once all its Tasks are done (#28), plus what happens on Today the moment the last one is checked off. Tap Tasks on Wednesday to finish the day, then let the parent approve.</p>
+    <div class="ctl">
+      <div class="ctl-row"><span>Look</span><div class="seg" id="varSeg"></div></div>
+      <div class="ctl-row"><span>Moment</span><div class="seg" id="momSeg"></div></div>
+      <div class="ctl-row"><span>Theme</span><div class="seg" id="themeSeg"></div></div>
+      <div class="ctl-row"><span>Accent</span><div class="sw" id="accSw"></div></div>
+      <div class="ctl-row"><span>Parent</span><button class="reset pri" id="approve">Approve all waiting</button><button class="reset" id="reset">Reset</button></div>
+    </div>
+    <div class="about" id="about"></div>
+    <div class="about"><h2>Same in all three</h2><ul>
+      <li><b>All done</b> means every Task of the day is checked off or counted. A day with a <b>Not counted</b> Task never lights up (last Wednesday), and neither does one with a Task left undone (last Friday).</li>
+      <li><b>Two stages:</b> when everything is checked off but some wait for the parent, the day gets an outline. Once every Task is counted, it's filled.</li>
+      <li>Past weeks light up the same way, so a good week reads at a glance (try ‹).</li>
+      <li>Future days and days outside a Contract never light up.</li>
+      <li>The <b>Moment</b> setting only affects today, when its last Task is checked off: <b>Off</b> (just the strip changes), <b>Burst</b> (the day pops, stars fly, a short note), or <b>Card</b> (a card above the Tasks for as long as the day stays done).</li>
+    </ul></div>
+  </div>
+  <div class="phone-col">
+    <div class="phone"><div class="screen" id="screen"></div></div>
+    <p class="hint">Sample data: Kuba on Wednesday 30 September at 17:40, 3 Tasks. Monday is fully counted, Tuesday is done but Homework waits for a check, today has one Task checked off.</p>
+  </div>
+</div>
+
+<div class="switcher" role="group" aria-label="Look switcher">
+  <button id="prev" aria-label="Previous look">←</button>
+  <div class="lbl" id="lbl"></div>
+  <button id="next" aria-label="Next look">→</button>
+</div>
+
+<script>
+const VARS = {
+  A:{name:"Gold day", about:[
+    "A finished day <b>fills with Kuba's accent colour</b> (gold unless he picked another), and a star replaces the dots.",
+    "Done but waiting: an accent outline with a hollow star.",
+    "Fits the Midnight look best: gold already means gwiazdki everywhere else (balance ring, counted Tasks).",
+    "Follows the per-teen accent, so a pink or sky day for someone who picked that."]},
+  B:{name:"Big star", about:[
+    "The date moves <b>inside a big star</b>: filled when every Task is counted, an outline while some wait.",
+    "The tile itself keeps its card colour, so the strip stays calm and the stars do the talking.",
+    "Closest to Misha's \"big Star\" idea. The catch: the strip gets a little taller for every day, to make room for the star."]},
+  C:{name:"Green check", about:[
+    "A finished day <b>turns green</b> with a check instead of the dots. Waiting: green outline, hollow check.",
+    "Green reads as \"done\" to anyone, and it doesn't compete with the gold of gwiazdki.",
+    "The catch: a new colour in the Midnight palette that doesn't follow the accent; close to the lime accent if Kuba picks that."]},
+};
+const MOMENTS = {off:"Off", burst:"Burst", card:"Card"};
+const ORDER = Object.keys(VARS);
+const ACCENTS = {gold:"#FFC54D", sky:"#7DD3FC", pink:"#F472B6", lime:"#A3E635", lavender:"#C4B5FD"};
+const TODAY = "2026-09-30", YDAY = "2026-09-29", TIME = "17:40";
+const TASKS = [
+  {id:"br",name:"Brush teeth",icon:"brush"},
+  {id:"bd",name:"Make the bed",icon:"bed"},
+  {id:"hw",name:"Homework",icon:"pencil"},
+];
+const WD = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], WDL = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const ICON = {
+  brush:'<path d="M3.5 20.5L13 11"/><path d="M12 8.5l3.5 3.5 4.5-4.5-3.5-3.5z"/><path d="M15 5l-1-1M17.5 7.5l-1-1"/>',
+  bed:'<path d="M3 19V6"/><path d="M3 15h18v4"/><path d="M21 15v-2.5A2.5 2.5 0 0018.5 10H11v5"/><circle cx="7" cy="12" r="1.8"/>',
+  pencil:'<path d="M4 20l1.2-4.2L16.5 4.5a2.1 2.1 0 013 3L8.2 18.8z"/><path d="M14.5 6.5l3 3"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  checkc:'<circle cx="12" cy="12" r="8.5"/><path d="M8 12.3l2.8 2.8L16.2 9.5"/>',
+  clock:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 2"/>',
+  x:'<path d="M7 7l10 10M17 7L7 17"/>',
+  gear:'<path d="M12.2 2h-.4a2 2 0 00-2 2v.2a2 2 0 01-1 1.7l-.4.3a2 2 0 01-2 0l-.2-.1a2 2 0 00-2.7.7l-.2.4a2 2 0 00.7 2.7l.2.1a2 2 0 011 1.7v.5a2 2 0 01-1 1.8l-.2.1a2 2 0 00-.7 2.7l.2.4a2 2 0 002.7.7l.2-.1a2 2 0 012 0l.4.3a2 2 0 011 1.7v.2a2 2 0 002 2h.4a2 2 0 002-2v-.2a2 2 0 011-1.7l.4-.3a2 2 0 012 0l.2.1a2 2 0 002.7-.7l.2-.4a2 2 0 00-.7-2.7l-.2-.1a2 2 0 01-1-1.8v-.5a2 2 0 011-1.7l.2-.1a2 2 0 00.7-2.7l-.2-.4a2 2 0 00-2.7-.7l-.2.1a2 2 0 01-2 0l-.4-.3a2 2 0 01-1-1.7V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  doc:'<path d="M15 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7z"/><path d="M14 2v5h5"/><path d="M8 13h8M8 17h5"/>',
+  l:'<path d="M15 18l-6-6 6-6"/>',
+  r:'<path d="M9 18l6-6-6-6"/>',
+  star:'<path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+};
+const STAR_D = "M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z";
+const svg = k => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+const star = () => `<svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_D}" fill="currentColor"/></svg>`;
+const wdIdx = d => (new Date(d+"T00:00:00Z").getUTCDay()+6)%7;
+const dnum = d => Number(d.slice(8,10));
+const dmLong = d => `${dnum(d)} ${MON[Number(d.slice(5,7))-1]}`;
+const addDays = (d,n) => { const x = new Date(d+"T00:00:00Z"); x.setUTCDate(x.getUTCDate()+n); return x.toISOString().slice(0,10); };
+const monday = d => addDays(d, -wdIdx(d));
+const starsWord = n => n===1 ? "gwiazdka" : ([2,3,4].includes(n%10) && ![12,13,14].includes(n%100)) ? "gwiazdki" : "gwiazdek";
+const CUR_MON = monday(TODAY), LAST_MON = addDays(CUR_MON,-7);
+const weekDays = m => [0,1,2,3,4].map(i=>addDays(m,i));
+const range = m => `${dnum(m)} – ${dmLong(addDays(m,4))}`;
+
+/* ---------- sample history ---------- */
+const A="approved", W="checked_off", R="rejected", N="not_done";
+const BASE = {
+  "2026-09-21":{br:A,bd:A,hw:A}, "2026-09-22":{br:A,bd:A,hw:A}, "2026-09-23":{br:A,bd:A,hw:R},
+  "2026-09-24":{br:A,bd:A,hw:A}, "2026-09-25":{br:A,bd:N,hw:A},
+  "2026-09-28":{br:A,bd:A,hw:A}, "2026-09-29":{br:A,bd:A,hw:W}, "2026-09-30":{br:W,bd:N,hw:N},
+};
+let st;
+function fresh(){ return {v:st?.v||"A", mom:st?.mom||"burst", theme:st?.theme||"dark", acc:st?.acc||"gold", week:CUR_MON, day:TODAY, tasks:{}, fx:false}; }
+st = fresh();
+const state = (t,d) => st.tasks[t+d] ?? BASE[d]?.[t] ?? N;
+const canChange = (t,d) => (d===TODAY || d===YDAY) && ![A,R].includes(state(t,d));
+const dayStars = d => d>TODAY ? 0 : TASKS.filter(t=>state(t.id,d)===A).length;
+const stars0 = 41; // earlier weeks of this Contract
+const balance = () => stars0 + [...weekDays(LAST_MON), ...weekDays(CUR_MON)].reduce((n,d)=>n+dayStars(d),0);
+// "full" = every Task counted; "part" = every Task checked off or counted, some waiting; "" otherwise.
+function doneState(d){
+  if (d > TODAY) return "";
+  const s = TASKS.map(t=>state(t.id,d));
+  if (s.every(x=>x===A)) return "full";
+  if (s.every(x=>x===A||x===W)) return "part";
+  return "";
+}
+
+/* ---------- pieces ---------- */
+function header(){
+  const b = balance(), p = dayStars(TODAY)/TASKS.length*100;
+  return `<header><div class="who"><small>${WDL[wdIdx(TODAY)]} ${dmLong(TODAY)}</small><h1>Hey, Kuba</h1></div>
+    <button class="hbtn" aria-label="Your Contract">${svg("doc")}</button><button class="hbtn" aria-label="Your look">${svg("gear")}</button>
+    <button class="bal" style="--p:${p}"><b>${star()}${b}</b><small>${starsWord(b)}</small></button></header>`;
+}
+function weekBar(m){
+  return `<div class="wbar"><button class="arrow" data-act="wprev" ${m===LAST_MON?"disabled":""} aria-label="Previous week">${svg("l")}</button>
+    <div class="t"><b>${m===CUR_MON?"This week":"Last week"}</b><small>${range(m)}</small></div>
+    <button class="arrow" data-act="wnext" ${m===CUR_MON?"disabled":""} aria-label="Next week">${svg("r")}</button></div>`;
+}
+function mark(ds){
+  if (st.v==="C") return `<span class="mark">${svg(ds==="full"?"check":"checkc")}</span>`;
+  return `<span class="mark">${ds==="full" ? star() : `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON.star}</svg>`}</span>`;
+}
+function strip(m){
+  return `<nav class="week">${weekDays(m).map(d=>{
+    const fut = d > TODAY, ds = doneState(d), waiting = TASKS.some(t=>state(t.id,d)===W);
+    const pips = TASKS.map(t=>`<i class="${!fut&&state(t.id,d)===A?"on":""}"></i>`).join("");
+    let num = `<span class="n">${dnum(d)}</span>`, low = `<span class="pips">${pips}</span>`;
+    if (ds && st.v==="B") num = `<span class="n"><svg class="bigst" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_D}"/></svg><em>${dnum(d)}</em></span>`;
+    else if (st.v==="B") num = `<span class="n" style="height:34px">${dnum(d)}</span>`;
+    if (ds && st.v!=="B") low = `<span class="pips">${mark(ds)}</span>`;
+    const lbl = ds==="full" ? ", all counted" : ds==="part" ? ", all done, waiting for a check" : "";
+    return `<button class="wd ${d===st.day?"sel":""} ${d===TODAY?"today":""} ${fut?"fut":""} ${ds}" ${fut?"disabled":`data-day="${d}"`} aria-label="${WDL[wdIdx(d)]} ${dnum(d)}${lbl}">
+      ${waiting&&!fut?`<span class="dot"></span>`:""}<span class="l">${WD[wdIdx(d)]}</span>${num}${low}</button>`;}).join("")}</nav>`;
+}
+const LABEL = {not_done:"Not done yet", checked_off:"Waiting for a check", approved:"Counted", rejected:"Not counted"};
+function dayCard(d){
+  if (st.mom!=="card" || d!==TODAY) return "";
+  const ds = doneState(d); if (!ds) return "";
+  const n = TASKS.length;
+  return ds==="full"
+    ? `<div class="dcard full"><span class="big">${st.v==="C"?svg("checkc"):star()}</span><div><b>Today's done, all ${n} counted</b><p>+${n} ${starsWord(n)} today. Nice.</p></div></div>`
+    : `<div class="dcard"><span class="big">${st.v==="C"?svg("checkc"):svg("star")}</span><div><b>All ${n} done for today</b><p>Your parent checks them tonight. Each one they approve is a gwiazdka.</p></div></div>`;
+}
+function dayBlock(d){
+  const ds = doneState(d), done = TASKS.filter(t=>state(t.id,d)!==N).length;
+  let note = "";
+  if (d === YDAY) note = `<div class="note">You can still change this day until 22:00 today.</div>`;
+  else if (d < YDAY) note = `<div class="note">This day can't be changed any more.</div>`;
+  const tiles = TASKS.map(t=>{
+    const s = state(t.id,d), ch = canChange(t.id,d);
+    const lbl = s===N && d<TODAY ? "Not done" : LABEL[s];
+    return `<button class="tile ${s}" ${ch?`data-task="${t.id}"`:"disabled"}>
+      <span class="ic">${svg(t.icon)}</span><span class="bdg">${s===A?svg("check"):s===W?svg("clock"):s===R?svg("x"):""}</span>
+      <b>${t.name}</b><small>${s===A?star()+" +1 · ":""}${lbl}</small></button>`;}).join("");
+  const title = d===TODAY ? "Today" : d===YDAY ? "Yesterday" : WDL[wdIdx(d)];
+  const pill = ds ? `<span class="pill done">${ds==="full"?"All counted":"All done"}</span>` : `<span class="pill">${done} / ${TASKS.length} done</span>`;
+  return `<div class="dh"><h2>${title}${d>=YDAY?"":`<small>${dmLong(d)}</small>`}</h2>${pill}</div>
+    ${dayCard(d)}${note}<div class="grid">${tiles}</div>`;
+}
+const status = () => `<div class="status"><span>${TIME}</span><span>●●● 5G</span></div>`;
+
+function seg(el, items, cur, on){
+  el.innerHTML = items.map(([k,l])=>`<button aria-pressed="${k===cur}" data-k="${k}">${l}</button>`).join("");
+  el.onclick = e => { const b = e.target.closest("button"); if (b) on(b.dataset.k); };
+}
+function render(){
+  const scr = document.getElementById("screen"), top = scr.scrollTop;
+  const fx = st.fx; st.fx = false;
+  scr.innerHTML = `<div class="app v${st.v} ${st.theme==="light"?"light":""}" style="--acc:${ACCENTS[st.acc]}">${status()}${header()}${weekBar(st.week)}${strip(st.week)}${dayBlock(st.day)}<div style="height:40px"></div></div>`;
+  scr.scrollTop = top;
+  if (fx) celebrate(scr);
+  const v = VARS[st.v];
+  document.getElementById("lbl").innerHTML = `${st.v} <small>(${v.name})</small>`;
+  seg(document.getElementById("varSeg"), ORDER.map(k=>[k,`${k} ${VARS[k].name}`]), st.v, k=>{st.v=k; render();});
+  seg(document.getElementById("momSeg"), Object.entries(MOMENTS), st.mom, k=>{st.mom=k; render();});
+  seg(document.getElementById("themeSeg"), [["dark","Dark"],["light","Light"]], st.theme, k=>{st.theme=k; render();});
+  const sw = document.getElementById("accSw");
+  sw.innerHTML = Object.entries(ACCENTS).map(([k,c])=>`<button aria-pressed="${k===st.acc}" aria-label="${k}" data-k="${k}" style="background:${c}"></button>`).join("");
+  sw.onclick = e => { const b = e.target.closest("button"); if (b){ st.acc = b.dataset.k; render(); } };
+  document.getElementById("approve").disabled = !Object.keys(BASE).concat(TODAY).some(d=>TASKS.some(t=>state(t.id,d)===W));
+  document.getElementById("about").innerHTML = `<h2>${st.v} · ${v.name}</h2><ul>${v.about.map(x=>`<li>${x}</li>`).join("")}</ul>
+    <p><b>Try:</b> check off Make the bed and Homework today, press <b>Approve all waiting</b>, then look at last week.</p>`;
+}
+function celebrate(scr){
+  if (st.mom!=="burst") return;
+  const tile = scr.querySelector(`.wd[data-day="${TODAY}"]`), app = scr.querySelector(".app");
+  if (!tile || st.week!==CUR_MON) return;
+  tile.classList.add("pop");
+  const a = app.getBoundingClientRect(), t = tile.getBoundingClientRect();
+  const cx = t.left - a.left + t.width/2, cy = t.top - a.top + t.height/2;
+  const fx = document.createElement("div"); fx.className = "fx";
+  const col = st.v==="C" ? "var(--ok)" : "var(--acc)";
+  fx.innerHTML = Array.from({length:14},(_,i)=>{
+    const ang = (i/14)*Math.PI*2 + Math.random()*.3, dist = 46 + Math.random()*44;
+    return `<i style="left:${cx}px;top:${cy}px;--fxc:${col};--dx:${Math.cos(ang)*dist}px;--dy:${Math.sin(ang)*dist}px;--r:${(Math.random()*360)|0}deg;animation-delay:${i%3*40}ms"><svg viewBox="0 0 24 24"><path d="${STAR_D}" fill="currentColor"/></svg></i>`;}).join("");
+  app.appendChild(fx);
+  const toast = document.createElement("div"); toast.className = "toast";
+  const light = st.theme==="light";
+  toast.style.cssText = `background:${light?"#10142A":"#EEF1FF"};color:${light?"#EEF0F7":"#0A0E1C"};--c:${st.v==="C"?(light?"#22B573":"#12824F"):ACCENTS[st.acc]}`;
+  toast.innerHTML = `${star()} Wednesday done. ${TASKS.length} of ${TASKS.length} checked off.`;
+  scr.parentElement.appendChild(toast);
+  setTimeout(()=>{ fx.remove(); toast.remove(); }, 3000);
+}
+const scr = document.getElementById("screen");
+scr.addEventListener("click", e => {
+  const el = e.target.closest("[data-act],[data-task],[data-day]");
+  if (!el || el.disabled) return;
+  if (el.dataset.task){
+    const before = doneState(st.day);
+    const k = el.dataset.task+st.day; st.tasks[k] = state(el.dataset.task, st.day)===N ? W : N;
+    if (st.day===TODAY && !before && doneState(TODAY)) st.fx = true;
+    return render();
+  }
+  if (el.dataset.day){ st.day = el.dataset.day; return render(); }
+  const a = el.dataset.act;
+  if (a==="wprev"){ st.week = LAST_MON; st.day = addDays(LAST_MON, Math.min(wdIdx(st.day),4)); }
+  if (a==="wnext"){ st.week = CUR_MON; st.day = TODAY; }
+  render();
+});
+document.getElementById("approve").onclick = () => {
+  for (const d of Object.keys(BASE)) for (const t of TASKS) if (state(t.id,d)===W) st.tasks[t.id+d] = A;
+  render();
+};
+function cycle(d){ const i = ORDER.indexOf(st.v); st.v = ORDER[(i+d+ORDER.length)%ORDER.length]; render(); }
+document.getElementById("prev").onclick = () => cycle(-1);
+document.getElementById("next").onclick = () => cycle(1);
+document.addEventListener("keydown", e => { if (e.key==="ArrowLeft") cycle(-1); if (e.key==="ArrowRight") cycle(1); });
+document.getElementById("reset").onclick = () => { st = fresh(); render(); };
+render();
+</script>
