@@ -29,6 +29,24 @@ export function progress(c: ContractDates, today: string) {
   return { all: all.length, done, left: all.length - done };
 }
 
+// A Contract "ends soon" for the child when this many School days or fewer are left.
+export const ENDS_SOON_DAYS = 3;
+
+// Where the child's open Contract stands in time: its School days, the share
+// gone (for the period bar) and whether the Payout is close.
+export function contractTimeline(c: ContractDates, today: string) {
+  const state = openContractState(c, today);
+  const { all, done, left } = progress(c, today);
+  return {
+    state,
+    all,
+    done,
+    left,
+    percent: all ? Math.round((done / all) * 100) : 0,
+    endsSoon: state === "running" && left <= ENDS_SOON_DAYS,
+  };
+}
+
 export function nextSchoolDay(day: string): string {
   let d = addDays(day, 1);
   while (!isSchoolDay(d)) d = addDays(d, 1);
