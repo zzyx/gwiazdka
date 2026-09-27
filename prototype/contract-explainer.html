@@ -205,7 +205,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 <div class="wrap">
   <div class="side">
     <h1>Where does a teen see how their Contract works?</h1>
-    <p>Three placements for the Contract explainer (#27), on the Midnight Today screen as it ships today. Same facts in each: the period and School days left, how a gwiazdka is earned, the rate, the Weekly bonus and where they stand.</p>
+    <p>Misha picked D (B's button and page, laid out like A). The other three placements for the Contract explainer (#27) stay for comparison, on the Midnight Today screen as it ships today. Same facts in each: the period and School days left, how a gwiazdka is earned, the rate, the Weekly bonus and where they stand.</p>
     <div class="ctl">
       <div class="ctl-row"><span>Layout</span><div class="seg" id="varSeg"></div></div>
       <div class="ctl-row"><span>Situation</span><div class="seg" id="sitSeg"></div></div>
@@ -227,6 +227,10 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 
 <script>
 const VARS = {
+  D:{name:"Chosen: B + A", about:[
+    "Misha's pick (2026-09-27): the header button from <b>B</b> opens a separate <b>Your Contract</b> page.",
+    "The page is laid out like <b>A</b>: what the gwiazdki are worth, the period bar with School days left, then the six rules as rows with line icons.",
+    "The Today screen stays as it is. A gold dot marks the button until it's been opened once."]},
   A:{name:"Section under the board", about:[
     "A <b>Your Contract</b> section sits under the day's Tasks on the Today screen. Scroll down and it is always there, no extra screen.",
     "Order: where you stand (gwiazdki, złoty, what's left), the period bar, then the rules as short rows with line icons.",
@@ -294,7 +298,7 @@ const starsWord = n => n===1 ? "gwiazdka" : ([2,3,4].includes(n%10) && ![12,13,1
 const pln = gr => (gr/100).toFixed(2)+" zł";
 const LABEL = {not_done:"Not done yet", checked_off:"Waiting for a check", approved:"Counted"};
 
-let st = {v:"A", sit:"mid", theme:"dark", pln:false, page:false, opened:false, storySeen:false, card:0, tasks:Object.fromEntries(TASKS.map(t=>[t.id,t.state]))};
+let st = {v:"D", sit:"mid", theme:"dark", pln:false, page:false, opened:false, storySeen:false, card:0, tasks:Object.fromEntries(TASKS.map(t=>[t.id,t.state]))};
 
 function model(){
   const s = SITS[st.sit];
@@ -388,6 +392,21 @@ function renderB(m){
     ${m.none?"":`<span class="pill" style="margin-left:auto">${dm(m.start)} – ${dm(m.end)}</span>`}</div>${body}</div>`;
 }
 
+/* ---------- D: chosen, B's own screen with A's content ---------- */
+function renderD(m){
+  const btn = `<button class="hbtn ${st.opened?"":"new"}" data-act="page" aria-label="Your Contract">${svg("doc")}</button>`;
+  const home = header(m, btn) + week() + tasks(m);
+  if (!st.page) return home;
+  const body = m.none ? `<div class="sec" style="margin-top:8px">${emptyCard(m)}</div>`
+    : `<div class="sec" style="margin-top:8px">${soonNote(m)}
+      <div class="card">${stand(m)}</div>
+      <div class="card">${period(m)}</div>
+      <div class="card">${rules(m,["earn","deadline","approve","rate","bonus","payout"])}</div></div>`;
+  return `${home}<div class="app page ${st.theme==="light"?"light":""}"><div class="status"><span>${TIME}</span><span>●●● 5G</span></div>
+    <div class="pghead"><button class="hbtn" data-act="close" aria-label="Back">${svg("back")}</button><h1>Your Contract</h1>
+    ${m.none?"":`<span class="pill" style="margin-left:auto">${dm(m.start)} – ${dm(m.end)}</span>`}</div>${body}</div>`;
+}
+
 /* ---------- C: story, then a chip ---------- */
 function cards(m){
   return [
@@ -419,7 +438,7 @@ function renderC(m){
   </div>`;
 }
 
-const RENDER = {A:renderA, B:renderB, C:renderC};
+const RENDER = {D:renderD, A:renderA, B:renderB, C:renderC};
 function seg(el, items, cur, on){
   el.innerHTML = items.map(([k,l])=>`<button aria-pressed="${k===cur}" data-k="${k}">${l}</button>`).join("");
   el.onclick = e => { const b = e.target.closest("button"); if (b) on(b.dataset.k); };
