@@ -1,10 +1,12 @@
 "use client";
 
-import { Check, Clock, FileText, Moon, X } from "lucide-react";
+import { type LucideIcon, Check, ChevronLeft, ChevronRight, Clock, FileText, Moon, Sun, Undo2, Wallet, X } from "lucide-react";
 import Link from "next/link";
-import { useOptimistic, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useOptimistic, useRef, useState, useTransition } from "react";
 import type { Board, BoardTask } from "@/lib/child-board";
 import { addDays, formatPln, starsWord, type TaskState } from "@/lib/today";
+import { dayMonth, mondayOf, weekRange, weekTitle } from "@/lib/weeks";
 import { setCheckOff } from "./actions";
 import { LookButton } from "./look";
 import { Star } from "./star";
@@ -12,19 +14,18 @@ import { TaskIcon } from "./task-icon";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const WEEKDAYS_LONG = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 const weekday = (day: string) => (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7;
-const longDate = (day: string) =>
-  `${WEEKDAYS_LONG[weekday(day)]} ${Number(day.slice(8, 10))} ${MONTHS[Number(day.slice(5, 7)) - 1]}`;
+const longDate = (day: string) => `${WEEKDAYS_LONG[weekday(day)]} ${dayMonth(day)}`;
 
 export function TodayBoard({ name, board, contractNew }: { name: string; board: Board; contractNew: boolean }) {
   const shown = board.selected?.tasks ?? [];
   const approved = shown.filter((t) => t.state === "approved").length;
   const ring = shown.length ? Math.round((approved / shown.length) * 100) : 0;
+  const thisWeek = board.monday === mondayOf(board.today);
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col pb-10">
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col pb-[max(6rem,calc(env(safe-area-inset-bottom)+5rem))]">
       <header className="flex items-center gap-4 px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4">
         <div className="min-w-0 flex-1">
           <p className="text-xs text-(--mn-muted)">{longDate(board.today)}</p>
@@ -34,11 +35,24 @@ export function TodayBoard({ name, board, contractNew }: { name: string; board: 
         <LookButton />
         {board.balance && <Balance {...board.balance} ring={ring} />}
       </header>
+      <WeekBar board={board} />
       <WeekStrip board={board} />
       {board.selected ? (
-        <DayTasks board={board} selected={board.selected} />
+        <DayTasks key={board.selected.day} board={board} selected={board.selected} />
       ) : (
         <Weekend openFriday={board.openFriday} />
+      )}
+      <WeekTotal board={board} />
+      {!thisWeek && (
+        <Link
+          href="/"
+          replace
+          scroll={false}
+          className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-(--mn-ink) px-4 py-2.5 text-[13px] font-semibold whitespace-nowrap text-(--mn-bg) shadow-[0_6px_18px_rgba(0,0,0,.35)] active:scale-95"
+        >
+          <Undo2 className="size-4" aria-hidden />
+          Back to today
+        </Link>
       )}
     </main>
   );
@@ -93,9 +107,74 @@ function Balance({ stars, groszePerStar, ring }: { stars: number; groszePerStar:
   );
 }
 
-function WeekStrip({ board }: { board: Board }) {
+// ‹ and › step a week back or forward, with the week's name between them.
+function WeekBar({ board }: { board: Board }) {
+  const lastWeek = addDays(mondayOf(board.today), -7);
+  const context =
+    board.monday >= lastWeek
+      ? weekRange(board.monday)
+      : !board.contract
+        ? "No Contract"
+        : board.contract.paidOn
+          ? `Paid out ${dayMonth(board.contract.paidOn)}`
+          : "This Contract";
   return (
-    <nav className="flex gap-1.5 px-4 pb-5">
+    <div className="flex items-center gap-2 px-4 pb-2.5">
+      <Arrow href={board.prev} label="Previous week">
+        <ChevronLeft className="size-4.5" aria-hidden />
+      </Arrow>
+      <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+        <b className="text-[15px] font-bold">{weekTitle(board.monday, board.today)}</b>
+        <small className="max-w-full truncate text-xs text-(--mn-muted)">{context}</small>
+      </div>
+      <Arrow href={board.next} label="Next week">
+        <ChevronRight className="size-4.5" aria-hidden />
+      </Arrow>
+    </div>
+  );
+}
+
+function Arrow({ href, label, children }: { href: string | null; label: string; children: React.ReactNode }) {
+  const cls =
+    "grid size-9 shrink-0 place-items-center rounded-full border border-(--mn-line) bg-(--mn-card) text-(--mn-ink)";
+  return href ? (
+    <Link href={href} replace scroll={false} aria-label={label} className={`${cls} active:scale-95`}>
+      {children}
+    </Link>
+  ) : (
+    <span aria-label={label} aria-disabled className={`${cls} opacity-30`}>
+      {children}
+    </span>
+  );
+}
+
+// A sideways swipe on the strip moves a week like the arrows: right goes back in time.
+function useWeekSwipe(board: Board) {
+  const router = useRouter();
+  const start = useRef<{ x: number; y: number } | null>(null);
+  return {
+    onPointerDown: (e: React.PointerEvent) => {
+      start.current = { x: e.clientX, y: e.clientY };
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      if (!start.current) return;
+      const dx = e.clientX - start.current.x;
+      const dy = e.clientY - start.current.y;
+      start.current = null;
+      if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+      const href = dx > 0 ? board.prev : board.next;
+      if (href) router.replace(href, { scroll: false });
+    },
+    onPointerCancel: () => {
+      start.current = null;
+    },
+  };
+}
+
+function WeekStrip({ board }: { board: Board }) {
+  const swipe = useWeekSwipe(board);
+  return (
+    <nav {...swipe} className="flex touch-pan-y gap-1.5 px-4 pb-5">
       {board.week.map((d) => {
         const selected = board.selected?.day === d.day;
         const content = (
@@ -128,11 +207,11 @@ function WeekStrip({ board }: { board: Board }) {
             : d.day === board.today
               ? "border-(--mn-acc-ink) bg-(--mn-card)"
               : "border-(--mn-line) bg-(--mn-card)"
-        } ${d.future ? "opacity-35" : ""}`;
+        } ${d.future ? "opacity-35" : !d.inContract ? "opacity-55" : ""}`;
         return d.future ? (
           <div key={d.day} className={cls}>{content}</div>
         ) : (
-          <Link key={d.day} href={`/?day=${d.day}`} replace scroll={false} className={cls}>
+          <Link key={d.day} href={`/?day=${d.day}`} replace scroll={false} draggable={false} className={cls}>
             {content}
           </Link>
         );
@@ -150,6 +229,8 @@ function DayTasks({ board, selected }: { board: Board; selected: NonNullable<Boa
   const [popped, setPopped] = useState<string>();
   const [, startTransition] = useTransition();
   const isToday = selected.day === board.today;
+  const isYesterday = selected.day === addDays(board.today, -1);
+  const past = selected.day < board.today;
   const done = tasks.filter((t) => t.state !== "not_done" && t.state !== "rejected").length;
 
   function toggle(task: BoardTask) {
@@ -163,27 +244,36 @@ function DayTasks({ board, selected }: { board: Board; selected: NonNullable<Boa
 
   return (
     <>
-      <h2 className="flex items-center justify-between px-5 pb-3 text-lg font-bold">
-        {isToday ? "Today" : WEEKDAYS_LONG[weekday(selected.day)]}
-        <small className="rounded-full border border-(--mn-line) bg-(--mn-card) px-2.5 py-1 text-xs font-normal text-(--mn-muted) tabular-nums">
-          {done} / {tasks.length} done
+      <h2 className="flex items-center justify-between gap-3 px-5 pb-3 text-lg font-bold">
+        <span className="min-w-0 truncate">
+          {isToday ? "Today" : isYesterday ? "Yesterday" : WEEKDAYS_LONG[weekday(selected.day)]}
+          {!isToday && !isYesterday && (
+            <small className="ml-1.5 text-[13px] font-medium text-(--mn-muted)">{dayMonth(selected.day)}</small>
+          )}
+        </span>
+        <small className="shrink-0 rounded-full border border-(--mn-line) bg-(--mn-card) px-2.5 py-1 text-xs font-normal text-(--mn-muted) tabular-nums">
+          {selected.contract ? `${done} / ${tasks.length} done` : "–"}
         </small>
       </h2>
-      {!board.balance ? (
-        <Note grey>Waiting for a new contract. Ask your parent.</Note>
-      ) : !selected.canChange ? (
+      {!selected.contract ? (
+        isToday ? (
+          <Note grey>Waiting for a new Contract. Ask your parent.</Note>
+        ) : (
+          <Note grey icon={Sun}>No Contract that week, so nothing counted.</Note>
+        )
+      ) : selected.contract.paidOn ? (
+        <Note grey icon={Wallet}>From your last Contract, paid out on {dayMonth(selected.contract.paidOn)}.</Note>
+      ) : isToday ? null : selected.canChange ? (
+        <Note>You can still change this day until 22:00 today.</Note>
+      ) : (
         <Note grey>This day can&apos;t be changed any more.</Note>
-      ) : !isToday ? (
-        <Note>
-          {selected.day === addDays(board.today, -1) ? "Yesterday" : WEEKDAYS_LONG[weekday(selected.day)]} is still open
-          until 22:00.
-        </Note>
-      ) : null}
+      )}
       <div className="grid grid-cols-2 gap-2.5 px-4">
         {tasks.map((t) => (
           <Tile
             key={t.id}
             task={t}
+            label={!selected.contract ? "No Contract" : past && !selected.canChange && t.state === "not_done" ? "Not done" : undefined}
             popped={popped === t.id && t.state === "checked_off"}
             onTap={selected.canChange && (t.state === "not_done" || t.state === "checked_off") ? () => toggle(t) : undefined}
           />
@@ -220,8 +310,11 @@ const TILE: Record<TaskState, { box: string; accent: string; badge: string; labe
   },
 };
 
-function Tile({ task, popped, onTap }: { task: BoardTask; popped: boolean; onTap?: () => void }) {
-  const look = TILE[task.state];
+// A label overrides the state's own: "Not done" on a past day, "No Contract"
+// outside one (the tile then shows no state at all).
+function Tile({ task, label, popped, onTap }: { task: BoardTask; label?: string; popped: boolean; onTap?: () => void }) {
+  const off = label === "No Contract";
+  const look = off ? { ...TILE.not_done, box: `${TILE.not_done.box} opacity-45` } : TILE[task.state];
   return (
     <button
       onClick={onTap}
@@ -231,7 +324,7 @@ function Tile({ task, popped, onTap }: { task: BoardTask; popped: boolean; onTap
     >
       <TaskIcon icon={task.icon} className={`size-5.5 text-[22px] ${look.accent}`} />
       <span className={`absolute top-3 right-3 grid size-6 place-items-center rounded-full border-[1.5px] ${look.badge}`}>
-        {task.state === "approved" ? (
+        {off ? null : task.state === "approved" ? (
           <Check className="size-3.5" strokeWidth={3} />
         ) : task.state === "checked_off" ? (
           <Clock className="size-3.5" strokeWidth={2.5} />
@@ -239,12 +332,12 @@ function Tile({ task, popped, onTap }: { task: BoardTask; popped: boolean; onTap
           <X className="size-3.5" strokeWidth={2.5} />
         ) : null}
       </span>
-      <span className={`text-[15px] leading-tight font-semibold ${task.state === "rejected" ? "line-through" : ""}`}>
+      <span className={`text-[15px] leading-tight font-semibold ${!off && task.state === "rejected" ? "line-through" : ""}`}>
         {task.name}
       </span>
       <span className={`mt-auto flex items-center gap-1 text-xs ${look.accent}`}>
-        {task.state === "approved" && (<><Star className="size-3.5" />+1 ·{" "}</>)}
-        {look.label}
+        {!off && task.state === "approved" && (<><Star className="size-3.5" />+1 ·{" "}</>)}
+        {label ?? look.label}
       </span>
       {popped && (
         <Star className="pointer-events-none absolute top-3.5 right-4 size-6 animate-[rise_.7s_forwards] text-(--acc)" />
@@ -278,14 +371,75 @@ function Weekend({ openFriday }: { openFriday: Board["openFriday"] }) {
   );
 }
 
-function Note({ children, grey = false }: { children: React.ReactNode; grey?: boolean }) {
+function Note({ children, grey = false, icon: Icon }: { children: React.ReactNode; grey?: boolean; icon?: LucideIcon }) {
   return (
     <div
-      className={`mx-4 mb-3 rounded-2xl border px-3.5 py-3 text-sm leading-snug ${
+      className={`mx-4 mb-3 flex items-center gap-2.5 rounded-2xl border px-3.5 py-3 text-sm leading-snug ${
         grey ? "border-(--mn-line) bg-(--mn-card) text-(--mn-muted)" : "border-(--mn-wait)/40 bg-(--mn-wait)/12"
       }`}
     >
-      {children}
+      {Icon && <Icon className="size-4 shrink-0" aria-hidden />}
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+// The shown week's Stars: from its Tasks, plus the Weekly bonus (none can be granted yet).
+function WeekTotal({ board }: { board: Board }) {
+  const thisWeek = board.monday === mondayOf(board.today);
+  const title = thisWeek
+    ? "This week so far"
+    : board.monday === addDays(mondayOf(board.today), -7)
+      ? "Last week"
+      : `Week of ${dayMonth(board.monday)}`;
+  const { stars, max, contractDays } = board.total;
+  return (
+    <section className="mx-4 mt-5 flex flex-col gap-3 rounded-[20px] border border-(--mn-line) bg-(--mn-card) p-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="text-[15px] font-bold">{title}</h3>
+        <b className="flex items-center gap-1 text-[22px] font-extrabold text-(--mn-acc-ink) tabular-nums">
+          <Star className="size-4.5" />
+          {stars}
+        </b>
+      </div>
+      {contractDays === 0 ? (
+        <p className="text-[13px] leading-snug text-(--mn-muted)">
+          No Contract, so no gwiazdki this week. They only count inside a Contract.
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-2.5">
+            <Count label="From Tasks">
+              <Star className="size-3.5" />
+              {stars}
+              <em className="text-xs font-medium text-(--mn-muted) not-italic">of {max}</em>
+            </Count>
+            <Count label="Weekly bonus">
+              {thisWeek ? (
+                <>
+                  –<em className="text-xs font-medium text-(--mn-muted) not-italic">decided after Friday</em>
+                </>
+              ) : (
+                0
+              )}
+            </Count>
+          </div>
+          {contractDays < 5 && (
+            <p className="text-[13px] leading-snug text-(--mn-muted)">
+              Only {contractDays} of the 5 days {thisWeek ? "are" : "were"} in a Contract.
+            </p>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function Count({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5 rounded-2xl bg-(--mn-line)/45 px-3 py-2.5">
+      <small className="text-[11px] font-semibold tracking-wider text-(--mn-muted) uppercase">{label}</small>
+      <b className="flex flex-wrap items-center gap-1 text-base tabular-nums">{children}</b>
     </div>
   );
 }
