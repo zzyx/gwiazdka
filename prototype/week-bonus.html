@@ -1,0 +1,658 @@
+<title>Gwiazdki Weekly Bonus</title>
+<!--
+  PROTOTYPE, throwaway. Answers zzyx/gwiazdka#29: where does the parent judge a finished week and
+  grant (or not) the Weekly bonus, and how does the child (a teen, 13 to 17) see the week summary?
+  Two phones share one in-memory model: the parent's app (its current look) on the left, Kuba's
+  Midnight Today screen on the right. Grant on the left and watch the right change.
+  Parent layouts (floating bar or ← →):
+    A  A week card at the top of each child's Inbox section
+    B  A Weeks list on the Contracts page, with a banner in the Inbox pointing there
+    C  The Inbox's folded days grouped by week, each week header carrying its bonus
+  Child layouts (segment): 1 week card only, 2 last-week recap on Today, 3 a one-time bonus moment.
+  Defaults taken: a week can be judged from its Friday on; the parent decides "Grant" or "No bonus"
+  (like an Approval) and can change it while the Contract is open; a perfect week is only hinted;
+  waiting Check-offs don't block a grant. Sample data (Kuba, Ola, their Tasks) is made up.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --bg:#EEF0F5; --panel:#FFFFFF; --ink:#1C2030; --muted:#5B6278; --line:#D9DDE7;
+  --accent:#2F5BEA; --chip:#E4E8F3; --bar:#141824; --bar-ink:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#12141B; --panel:#1C1F2A; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+    --accent:#8FA8FF; --chip:#262B3A; --bar:#F1F3F9; --bar-ink:#12141B;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#12141B; --panel:#1C1F2A; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+  --accent:#8FA8FF; --chip:#262B3A; --bar:#F1F3F9; --bar-ink:#12141B;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:Figtree,system-ui,-apple-system,sans-serif;font-size:14px;padding-inline:16px;padding-block:20px 96px;margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.intro{display:flex;flex-direction:column;gap:12px}
+.intro h1{font-size:24px;line-height:1.2;margin:0;text-wrap:balance}
+.intro p{margin:0;color:var(--muted);line-height:1.5}
+.ctl{display:flex;flex-direction:column;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ctl-row>span{width:84px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.seg{display:inline-flex;background:var(--chip);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:8px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.reset{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 12px;font-weight:600}
+.abouts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.about{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.about h2{margin:0;font-size:15px}
+.about ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;color:var(--muted);line-height:1.45}
+.about b{color:var(--ink)}
+.phones{display:flex;gap:28px;justify-content:center;flex-wrap:wrap}
+.pcol{display:flex;flex-direction:column;gap:8px;align-items:center}
+.pcol>h3{margin:0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.phone{width:380px;max-width:100%;height:760px;border-radius:44px;border:10px solid #0D0F16;background:#0D0F16;overflow:hidden;position:relative;box-shadow:0 20px 50px rgba(20,24,40,.25)}
+.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;border-radius:34px}
+@media (max-width:980px){ .top{grid-template-columns:1fr} .abouts{grid-template-columns:1fr} }
+@media (max-width:480px){
+  body{padding-inline:8px}
+  .switcher .lbl small{display:none}
+  .phone{border-width:0;border-radius:18px;height:720px;box-shadow:none}
+  .screen{border-radius:18px}
+}
+.switcher{position:fixed;left:50%;transform:translateX(-50%);bottom:0;margin-bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;align-items:center;gap:4px;background:var(--bar);color:var(--bar-ink);border-radius:999px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:calc(100% - 24px)}
+.switcher button{border:0;background:transparent;color:inherit;width:40px;height:40px;border-radius:50%;font-size:18px;flex:none}
+.switcher button:hover{background:rgba(127,127,127,.25)}
+.switcher .lbl{padding:0 10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switcher .lbl small{opacity:.65;font-weight:500}
+.status{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font:600 14px Figtree,system-ui,sans-serif}
+
+/* ============ PARENT (as shipped: Inbox by child, Figtree, white cards) ============ */
+.par{min-height:100%;background:#F6F7F9;color:#1F2430;font-family:Figtree,system-ui,sans-serif;font-size:15px;padding-bottom:30px;color-scheme:light;position:relative}
+.par button{border:0;background:none;padding:0;text-align:left}
+.ph{display:flex;align-items:center;gap:10px;padding:4px 16px 14px}
+.ph h1{margin:0;font-size:24px;font-weight:700;flex:1}
+.ph .lnk{color:#2563EB;font-size:14px}
+.wpill{border-radius:999px;padding:4px 12px;font-size:14px;font-weight:700;background:#E5E7EB;color:#6B7280}
+.wpill.on{background:#2563EB;color:#fff}
+.kid{display:flex;flex-direction:column;gap:10px;padding:0 16px 22px}
+.kh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.kh h2{margin:0;font-size:20px;font-weight:700}
+.kh .m{font-size:14px;font-weight:600;display:flex;gap:6px;align-items:center}
+.amb{border-radius:999px;background:#FEF3C7;color:#92400E;font-weight:700;padding:2px 8px;font-size:13px}
+.pc{background:#fff;border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.06);overflow:hidden}
+.pc.pad{padding:14px 16px}
+.pc .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid #E5E7EB}
+.pc .hd h3{margin:0;font-size:15px;font-weight:700}
+.pc .hd p{margin:1px 0 0;font-size:12px;color:#6B7280}
+.pbtn{border-radius:8px!important;background:#2563EB!important;color:#fff;font-weight:700;padding:8px 12px!important;font-size:14px;white-space:nowrap}
+.pbtn.sec{background:#fff!important;color:#374151;border:1px solid #D1D5DB!important}
+.pbtn.sm{padding:5px 9px!important;font-size:13px}
+.prow{display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid #F0F1F3;font-size:14px}
+.prow:first-child{border-top:0}
+.prow .e{font-size:20px}
+.prow .n{flex:1}
+.prow .ok{color:#15803D;font-weight:600}
+.prow .no{color:#B91C1C;font-weight:600}
+.prow .wt{color:#92400E;font-weight:600;font-size:13px}
+.muted{color:#6B7280}
+.fold{display:flex;justify-content:space-between;padding:9px 16px;border-top:1px solid #E5E7EB;font-size:14px}
+.fold:first-child{border-top:0}
+.fold span:last-child{color:#6B7280}
+.plink{color:#2563EB!important;font-size:14px}
+.plain{font-size:14px;color:#6B7280}
+/* week card (A) */
+.wk .bars{display:flex;gap:6px;align-items:flex-end;margin:12px 0 10px}
+.wk .bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:#6B7280}
+.wk .bars i{display:block;width:100%;height:34px;border-radius:6px;background:#E5E7EB;position:relative;overflow:hidden}
+.wk .bars i::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(var(--f)*100%);background:#2563EB}
+.wk .bars i.w::before{content:"";position:absolute;left:0;right:0;bottom:calc(var(--f)*100%);height:calc(var(--w)*100%);background:#FCD34D;z-index:1}
+.wk .sum{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px}
+.wk .sum b{font-size:18px}
+.perfect{border-radius:999px;background:#DCFCE7;color:#15803D;font-weight:700;padding:2px 8px;font-size:12px}
+.wk .acts{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
+.wk .why{font-size:12px;color:#6B7280;margin-top:8px;line-height:1.4}
+.rcpt{display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:14px}
+.rcpt .t{flex:1;min-width:0}
+.rcpt .t small{display:block;color:#6B7280;font-size:12px}
+.chip{border-radius:999px!important;padding:3px 10px!important;font-size:13px;font-weight:700;white-space:nowrap}
+.chip.g{background:#DBEAFE!important;color:#1D4ED8}
+.chip.n{background:#F3F4F6!important;color:#6B7280}
+.chip.q{background:#FEF3C7!important;color:#92400E}
+/* weeks list (B, and A's sheet) */
+.wrowp{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid #F0F1F3}
+.wrowp:first-child{border-top:0}
+.wrowp .d{width:84px;flex:none}
+.wrowp .d b{display:block;font-size:14px}
+.wrowp .d small{font-size:12px;color:#6B7280}
+.wrowp .b5{flex:1;display:flex;gap:3px;height:22px;align-items:flex-end;min-width:40px}
+.wrowp .b5 i{flex:1;height:100%;border-radius:3px;background:#E5E7EB;position:relative;overflow:hidden}
+.wrowp .b5 i::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(var(--f)*100%);background:#2563EB}
+.wrowp .b5 i.x{background:transparent;border:1px dashed #D1D5DB}
+.wrowp .s{width:48px;text-align:right;font-size:13px;font-weight:600;flex:none}
+.wrowp .ctl2{display:flex;gap:4px;flex:none;min-width:86px;justify-content:flex-end}
+.wrowp.hot{background:#FFFBEB}
+.banner{display:flex;align-items:center;gap:10px;background:#EFF6FF!important;border:1px solid #BFDBFE!important;border-radius:12px!important;padding:11px 14px!important;font-size:14px;color:#1E3A8A;width:100%}
+.banner span{flex:1}
+.tabs{display:flex;gap:6px;padding:0 16px 12px}
+.tabs button{border-radius:999px!important;padding:6px 14px!important;background:#E5E7EB!important;font-weight:600;font-size:14px}
+.tabs button.on{background:#1F2430!important;color:#fff}
+.cstat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.cstat div{background:#F6F7F9;border-radius:10px;padding:8px 10px}
+.cstat small{display:block;font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.cstat b{font-size:16px}
+.back{color:#2563EB!important;font-size:14px;padding:0 16px 8px!important;display:block}
+/* grouped by week (C) */
+.wh{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#F9FAFB;border-top:1px solid #E5E7EB;font-size:14px}
+.wh:first-child{border-top:0}
+.wh b{flex:1}
+.wh .st{color:#6B7280;font-size:13px}
+.wh.hot{background:#FFFBEB}
+.par.lock{height:100%;overflow:hidden}
+.pop{position:absolute;inset:0;background:rgba(15,20,30,.4);z-index:20;display:flex;align-items:flex-end}
+.pop .sh{background:#fff;border-radius:20px 20px 0 0;width:100%;padding:16px 16px 28px;display:flex;flex-direction:column;gap:12px;max-height:80%;overflow:auto}
+.pop .sh h3{margin:0;font-size:17px}
+
+/* ============ CHILD (Midnight, as shipped in #32/#37) ============ */
+.app{--bgB:#0A0E1C;--cardB:#141A2E;--card2B:#1B2340;--inkB:#EEF1FF;--mutB:#8A93B8;--lineB:#252E4D;--acc:#FFC54D;--accInk:var(--acc);--wait:#7FA7FF;
+  min-height:100%;padding-bottom:36px;position:relative;
+  background:radial-gradient(120% 50% at 85% -10%,color-mix(in srgb,var(--acc) 14%,transparent),transparent 60%),var(--bgB);
+  color:var(--inkB);font-family:Sora,system-ui,sans-serif;color-scheme:dark}
+.app.light{--bgB:#EEF0F7;--cardB:#FFFFFF;--card2B:#F4F5FA;--inkB:#10142A;--mutB:#5E6688;--lineB:#DCE0EE;--wait:#3867E0;--accInk:color-mix(in oklab,var(--acc),#10142A 45%);color-scheme:light}
+.app.lock{height:100%;overflow:hidden}
+.app svg.i{width:1em;height:1em;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.app svg.st,.par svg.st{width:1em;height:1em;display:inline-block;vertical-align:-.12em;flex:none}
+.app button{border:0;background:none;padding:0;text-align:left}
+.app header{padding:6px 20px 16px;display:flex;align-items:center;gap:12px}
+.who{flex:1;min-width:0}
+.who small{display:block;font-size:12px;color:var(--mutB)}
+.who h1{margin:2px 0 0;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.hbtn{width:40px;height:40px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;color:var(--mutB);font-size:18px;position:relative;flex:none}
+.bal{display:flex!important;flex-direction:column;align-items:center;justify-content:center;width:96px;height:96px;border-radius:50%;background:var(--cardB)!important;border:1px solid var(--lineB)!important;position:relative;flex:none}
+.bal::before{content:"";position:absolute;inset:-1px;border-radius:50%;background:conic-gradient(var(--acc) calc(var(--p)*1%),transparent 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))}
+.bal b{font-size:26px;font-weight:800;color:var(--accInk);display:flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums;line-height:1}
+.bal small{font-size:10px;color:var(--mutB);margin-top:3px}
+.bal.bump b{animation:bump .6s ease-out}
+@keyframes bump{30%{transform:scale(1.25)}}
+.wbar{display:flex;align-items:center;gap:8px;padding:0 16px 10px}
+.wbar .t{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center}
+.wbar .t b{font-size:15px;font-weight:700}
+.wbar .t small{font-size:12px;color:var(--mutB)}
+.arrow{width:36px;height:36px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;font-size:17px;flex:none}
+.arrow:disabled{opacity:.3;cursor:default}
+.week{display:flex;gap:6px;padding:0 16px 18px}
+.wd{flex:1;display:flex!important;flex-direction:column;align-items:center;gap:6px;padding:10px 0!important;border-radius:16px;background:var(--cardB)!important;border:1px solid var(--lineB)!important}
+.wd .l{font-size:11px;color:var(--mutB);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.wd .n{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.wd .pips{display:flex;gap:2px;height:5px}
+.wd .pips i{width:5px;height:5px;border-radius:50%;background:var(--lineB)}
+.wd .pips i.on{background:var(--acc)}
+.wd.sel{background:var(--inkB)!important;color:var(--bgB);border-color:var(--inkB)!important}
+.wd.sel .l{color:color-mix(in srgb,var(--bgB) 65%,transparent)}
+.wd.fut{opacity:.35;cursor:default}
+.wd.off{opacity:.5}
+.dh{display:flex;justify-content:space-between;align-items:center;padding:0 20px 12px}
+.dh h2{margin:0;font-size:18px;font-weight:700}
+.dh h2 small{font-size:13px;font-weight:500;color:var(--mutB);margin-left:6px}
+.pill{font-size:12px;color:var(--mutB);background:var(--cardB);border:1px solid var(--lineB);border-radius:999px;padding:4px 10px}
+.note{margin:0 16px 12px;padding:11px 14px;border-radius:14px;font-size:13px;line-height:1.45;background:var(--cardB);border:1px solid var(--lineB);color:var(--mutB)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
+.tile{position:relative;display:flex;flex-direction:column;gap:14px;min-height:104px;padding:14px;border-radius:20px;background:var(--cardB);border:1px solid var(--lineB)}
+.tile .ic{font-size:22px;color:var(--mutB)}
+.tile b{font-size:15px;font-weight:600;line-height:1.25}
+.tile small{margin-top:auto;font-size:12px;color:var(--mutB);display:flex;align-items:center;gap:5px}
+.tile .bdg{position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;border:1.5px solid var(--lineB)}
+.tile.checked_off{border-color:color-mix(in srgb,var(--wait) 60%,transparent);background:color-mix(in srgb,var(--wait) 10%,var(--cardB))}
+.tile.checked_off .ic,.tile.checked_off small{color:var(--wait)}
+.tile.checked_off .bdg{background:var(--wait);border-color:var(--wait);color:var(--bgB)}
+.tile.approved{border-color:color-mix(in srgb,var(--acc) 55%,transparent);background:color-mix(in srgb,var(--acc) 9%,var(--cardB))}
+.tile.approved .ic,.tile.approved small{color:var(--accInk)}
+.tile.approved .bdg{background:var(--acc);border-color:var(--acc);color:#1A1405}
+.tile.rejected{opacity:.75}
+.tile.rejected b{text-decoration:line-through;color:var(--mutB)}
+.wkend{margin:0 16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:26px 20px;border-radius:24px;background:var(--cardB);border:1px solid var(--lineB)}
+.wkend .i{font-size:38px;color:var(--accInk)}
+.wkend h2{margin:0;font-size:22px}
+.wkend p{margin:0;color:var(--mutB)}
+.card{background:var(--cardB);border:1px solid var(--lineB);border-radius:20px;padding:16px}
+.wsum{margin:18px 16px 0;display:flex;flex-direction:column;gap:12px}
+.wsum .top2{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.wsum .top2 h3{margin:0;font-size:15px;font-weight:700}
+.wsum .top2 b{font-size:22px;font-weight:800;color:var(--accInk);display:flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums}
+.wsum .kvs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wsum p{margin:0;font-size:13px;color:var(--mutB);line-height:1.45}
+.kv{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:14px;background:var(--card2B)}
+.kv small{font-size:11px;color:var(--mutB);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.kv b{font-size:16px;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.kv em{font-style:normal;font-size:12px;color:var(--mutB);font-weight:500}
+.kv.lit{background:color-mix(in srgb,var(--acc) 16%,var(--card2B));outline:1px solid color-mix(in srgb,var(--acc) 45%,transparent)}
+.kv.lit b{color:var(--accInk)}
+.tag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accInk);border:1px solid color-mix(in srgb,var(--acc) 50%,transparent);border-radius:6px;padding:1px 6px}
+/* recap card (child 2) */
+.recap{margin:0 16px 14px;display:flex;flex-direction:column;gap:10px;position:relative;background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 18%,var(--cardB)),var(--cardB) 70%);border-color:color-mix(in srgb,var(--acc) 40%,var(--lineB))}
+.recap.plainr{background:var(--cardB);border-color:var(--lineB)}
+.recap .x{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;display:grid!important;place-items:center;color:var(--mutB);font-size:15px}
+.recap small{padding-right:30px;font-size:12px;color:var(--mutB);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.recap .eq{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.recap .eq b{font-size:24px;font-weight:800;color:var(--accInk);display:flex;align-items:center;gap:4px}
+.recap .eq span{color:var(--mutB);font-size:14px}
+.recap p{margin:0;font-size:13px;color:var(--mutB);line-height:1.45;padding-right:24px}
+/* bonus moment (child 3) */
+.shade{position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.6);animation:fade .2s;display:flex;align-items:center;justify-content:center;padding:24px}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.moment{width:100%;background:var(--bgB);border:1px solid var(--lineB);border-radius:28px;padding:28px 22px 22px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
+.moment .big{font-size:64px;color:var(--acc);filter:drop-shadow(0 0 22px color-mix(in srgb,var(--acc) 60%,transparent));animation:spin 1s ease-out}
+@keyframes spin{from{transform:rotate(-40deg) scale(.4)}to{transform:none}}
+.moment .big svg{width:72px;height:72px}
+.moment h2{margin:4px 0 0;font-size:30px;font-weight:800;color:var(--accInk)}
+.moment h3{margin:0;font-size:16px}
+.moment p{margin:0;font-size:13px;color:var(--mutB);line-height:1.5}
+.moment .go{margin-top:10px;width:100%;text-align:center!important;border-radius:14px;background:var(--acc)!important;color:#1A1405;font-weight:700;padding:13px!important}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div class="intro">
+      <h1>Where does a week get its Weekly bonus, and how does the teen see it?</h1>
+      <p>#29. The parent judges a finished week and grants the Weekly bonus by hand (or decides "No bonus"). Grant it on the left; Kuba's app on the right updates. Try each moment in the week with the <b>Time</b> control.</p>
+    </div>
+    <div class="ctl">
+      <div class="ctl-row"><span>Parent</span><div class="seg" id="pSeg"></div></div>
+      <div class="ctl-row"><span>Child</span><div class="seg" id="cSeg"></div></div>
+      <div class="ctl-row"><span>Time</span><div class="seg" id="tSeg"></div></div>
+      <div class="ctl-row"><span>Theme</span><div class="seg" id="themeSeg"></div><button class="reset" id="reset">Reset</button></div>
+    </div>
+  </div>
+  <div class="phones">
+    <div class="pcol"><h3>Parent</h3><div class="phone"><div class="screen" id="pscr"></div></div></div>
+    <div class="pcol"><h3>Kuba (teen)</h3><div class="phone"><div class="screen" id="cscr"></div></div></div>
+  </div>
+  <div class="abouts">
+    <div class="about" id="pAbout"></div>
+    <div class="about" id="cAbout"></div>
+    <div class="about"><h2>Same everywhere (defaults to confirm)</h2><ul>
+      <li><b>When:</b> a week can be judged from its Friday on. Before that it says "decided after Friday".</li>
+      <li><b>Grant or No bonus:</b> both are a decision, like an Approval. Until one is made the week shows as waiting, for both of you. Either can be changed while the Contract is open.</li>
+      <li><b>Amount:</b> always the Contract's Weekly bonus (Kuba +3, Ola +2), all or nothing.</li>
+      <li><b>Perfect week</b> (every Task counted) is only a hint. You still decide.</li>
+      <li><b>Waiting Check-offs</b> don't block a grant; the card says how many are left.</li>
+      <li><b>Balance and Payout</b> include granted bonuses; a Payout lists them as bonus gwiazdki.</li>
+    </ul></div>
+  </div>
+</div>
+
+<div class="switcher" role="group" aria-label="Parent layout switcher">
+  <button id="prev" aria-label="Previous layout">←</button>
+  <div class="lbl" id="lbl"></div>
+  <button id="next" aria-label="Next layout">→</button>
+</div>
+
+<script>
+const PV = {
+  A:{name:"Week card in the Inbox", about:[
+    "From Friday, a <b>week card</b> sits at the top of each child's section: five day bars, gwiazdki from Tasks, a Perfect week hint, and <b>No bonus</b> / <b>Grant +3</b>.",
+    "Once decided it shrinks to a one-line receipt with <b>Change</b>, until the next week is up.",
+    "Older weeks: an <b>All weeks</b> link opens a list to change them.",
+    "Hard to miss, like the waiting days are. The catch: one more card in the Inbox every weekend."]},
+  B:{name:"Weeks on the Contracts page", about:[
+    "The Contracts page gets a <b>Weeks</b> section under the Contract card: one row per week with day bars, gwiazdki and its bonus.",
+    "The Inbox only shows a small <b>banner</b> when a week is waiting to be judged, linking there.",
+    "Every week of the Contract in one place, next to the rate and bonus size.",
+    "The catch: one extra tap away from the daily Inbox."]},
+  C:{name:"Inbox grouped by week", about:[
+    "The Inbox's folded days are <b>grouped under week headers</b>, each with the week's gwiazdki and its bonus on the right.",
+    "A finished week still to judge has a highlighted header with <b>No</b> / <b>+3</b>.",
+    "No new card and no new page: the bonus lives where you already look at days.",
+    "The catch: the week rows sit below the waiting days, so it's easier to scroll past."]},
+};
+const CV = {
+  1:{name:"Week card", about:[
+    "Nothing new on Today. The <b>week total card</b> (from #37) fills its Weekly bonus slot: <b>+3</b>, <b>0 · not this week</b>, or <b>waiting for your parent</b>.",
+    "Last week's is one arrow tap back. Quietest option."]},
+  2:{name:"Last-week recap", about:[
+    "Adds a <b>recap card</b> at the top of Today from Monday on: last week's gwiazdki + bonus = total, with a Perfect week tag.",
+    "On the weekend it shows for this week instead. The × hides it until the next week."]},
+  3:{name:"Bonus moment", about:[
+    "The first time Kuba opens the app after a grant, a <b>one-time sheet</b> pops up: big gwiazdka, +3 Weekly bonus, which week and why. The balance bumps.",
+    "No bonus doesn't pop anything; it just shows in the week card (as in 1)."]},
+};
+const PORD = Object.keys(PV), CORD = Object.keys(CV);
+const TIMES = {
+  fri:{label:"Fri 25 Sep 19:00", today:"2026-09-25", time:"19:00"},
+  sat:{label:"Sat 26 Sep 11:00", today:"2026-09-26", time:"11:00"},
+  mon:{label:"Mon 28 Sep 17:40", today:"2026-09-28", time:"17:40"},
+};
+const KIDS = {
+  kuba:{name:"Kuba", bonus:3, gr:50, start:"2026-09-01", tasks:[
+    {id:"k1",name:"Brush teeth",icon:"brush",e:"🪥"},{id:"k2",name:"Make the bed",icon:"bed",e:"🛏️"},{id:"k3",name:"Homework",icon:"pencil",e:"✏️"}]},
+  ola:{name:"Ola", bonus:2, gr:40, start:"2026-09-01", tasks:[
+    {id:"o1",name:"Brush teeth",icon:"brush",e:"🪥"},{id:"o2",name:"Piano practice",icon:"pencil",e:"🎹"},{id:"o3",name:"Read 20 min",icon:"pencil",e:"📖"},{id:"o4",name:"Pack school bag",icon:"bed",e:"🎒"}]},
+};
+const FIRST_MON = "2026-08-31";
+const BASE_DEC = {"kuba|2026-08-31":true,"kuba|2026-09-07":false,"kuba|2026-09-14":true,"ola|2026-08-31":true,"ola|2026-09-07":true,"ola|2026-09-14":false};
+const FRI = "2026-09-25", NEXT_MON = "2026-09-28";
+const FRI_STATES = {
+  kuba:{fri:["checked_off","checked_off","not_done"], sat:["checked_off","checked_off","checked_off"], mon:["approved","approved","approved"]},
+  ola:{fri:["checked_off","checked_off","not_done","not_done"], sat:["checked_off","checked_off","checked_off","not_done"], mon:["approved","approved","checked_off","not_done"]},
+};
+const MON_STATES = {kuba:["checked_off","not_done","not_done"], ola:["checked_off","checked_off","not_done","not_done"]};
+
+const WD = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], WDL = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const ICON = {
+  brush:'<path d="M3.5 20.5L13 11"/><path d="M12 8.5l3.5 3.5 4.5-4.5-3.5-3.5z"/><path d="M15 5l-1-1M17.5 7.5l-1-1"/>',
+  bed:'<path d="M3 19V6"/><path d="M3 15h18v4"/><path d="M21 15v-2.5A2.5 2.5 0 0018.5 10H11v5"/><circle cx="7" cy="12" r="1.8"/>',
+  pencil:'<path d="M4 20l1.2-4.2L16.5 4.5a2.1 2.1 0 013 3L8.2 18.8z"/><path d="M14.5 6.5l3 3"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  clock:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 2"/>',
+  x:'<path d="M7 7l10 10M17 7L7 17"/>',
+  gear:'<path d="M12.2 2h-.4a2 2 0 00-2 2v.2a2 2 0 01-1 1.7l-.4.3a2 2 0 01-2 0l-.2-.1a2 2 0 00-2.7.7l-.2.4a2 2 0 00.7 2.7l.2.1a2 2 0 011 1.7v.5a2 2 0 01-1 1.8l-.2.1a2 2 0 00-.7 2.7l.2.4a2 2 0 002.7.7l.2-.1a2 2 0 012 0l.4.3a2 2 0 011 1.7v.2a2 2 0 002 2h.4a2 2 0 002-2v-.2a2 2 0 011-1.7l.4-.3a2 2 0 012 0l.2.1a2 2 0 002.7-.7l.2-.4a2 2 0 00-.7-2.7l-.2-.1a2 2 0 01-1-1.8v-.5a2 2 0 011-1.7l.2-.1a2 2 0 00.7-2.7l-.2-.4a2 2 0 00-2.7-.7l-.2.1a2 2 0 01-2 0l-.4-.3a2 2 0 01-1-1.7V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  doc:'<path d="M15 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7z"/><path d="M14 2v5h5"/><path d="M8 13h8M8 17h5"/>',
+  l:'<path d="M15 18l-6-6 6-6"/>', r:'<path d="M9 18l6-6-6-6"/>',
+  moon:'<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>',
+};
+const svg = k => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+const star = () => `<svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="currentColor"/></svg>`;
+const wdIdx = d => (new Date(d+"T00:00:00Z").getUTCDay()+6)%7;
+const dnum = d => Number(d.slice(8,10));
+const mon3 = d => MON[Number(d.slice(5,7))-1].slice(0,3);
+const dm = d => `${dnum(d)} ${mon3(d)}`;
+const dmLong = d => `${dnum(d)} ${MON[Number(d.slice(5,7))-1]}`;
+const addDays = (d,n) => { const x = new Date(d+"T00:00:00Z"); x.setUTCDate(x.getUTCDate()+n); return x.toISOString().slice(0,10); };
+const monday = d => addDays(d, -wdIdx(d));
+const range = m => { const f = addDays(m,4); return m.slice(5,7)===f.slice(5,7) ? `${dnum(m)}–${dnum(f)} ${mon3(f)}` : `${dm(m)} – ${dm(f)}`; };
+const starsWord = n => n===1 ? "gwiazdka" : ([2,3,4].includes(n%10) && ![12,13,14].includes(n%100)) ? "gwiazdki" : "gwiazdek";
+const pln = gr => (gr/100).toFixed(2).replace(".",",")+" zł";
+const dotDay = d => `${WD[wdIdx(d)]} ${d.slice(8,10)}.${d.slice(5,7)}`;
+const weekDays = m => [0,1,2,3,4].map(i=>addDays(m,i));
+const hash = s => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h>>>0)%1000)/1000; };
+
+let st;
+function fresh(keep){ return {pv:keep?.pv||"A", cv:keep?.cv||"1", t:keep?.t||"sat", theme:keep?.theme||"dark",
+  tasks:{}, dec:{}, seen:{}, hid:{}, psheet:null, ppage:"inbox", ptab:"kuba", chWeek:null, chDay:null, bump:false, edit:null}; }
+st = fresh();
+const T = () => TIMES[st.t];
+const TODAY = () => T().today;
+const SCHOOL_TODAY = () => wdIdx(TODAY())>4 ? addDays(monday(TODAY()),4) : TODAY();
+const CUR_MON = () => monday(TODAY());
+const weeks = () => { const w = []; for (let m = FIRST_MON; m <= CUR_MON(); m = addDays(m,7)) w.push(m); return w; };
+
+function base(k, t, d){
+  const kid = KIDS[k], i = kid.tasks.findIndex(x=>x.id===t);
+  if (d > TODAY() || d < kid.start) return "not_done";
+  if (d === FRI) return FRI_STATES[k][st.t][i];
+  if (d === NEXT_MON) return MON_STATES[k][i];
+  if (d >= "2026-09-21") {
+    if (k==="ola" && d==="2026-09-22" && t==="o3") return "rejected";
+    if (k==="ola" && d==="2026-09-24" && t==="o4") return "not_done";
+    return "approved";
+  }
+  const r = hash(k+t+d);
+  return r < .8 ? "approved" : r < .88 ? "rejected" : "not_done";
+}
+const state = (k,t,d) => st.tasks[k+t+d] ?? base(k,t,d);
+const inC = (k,d) => d >= KIDS[k].start && d <= TODAY();
+const dayStars = (k,d) => inC(k,d) ? KIDS[k].tasks.filter(t=>state(k,t.id,d)==="approved").length : 0;
+const dayWaiting = (k,d) => inC(k,d) ? KIDS[k].tasks.filter(t=>state(k,t.id,d)==="checked_off").length : 0;
+const judgeable = m => TODAY() >= addDays(m,4);
+function dec(k,m){ const key = k+"|"+m; return key in st.dec ? st.dec[key] : (key in BASE_DEC ? BASE_DEC[key] : null); }
+function wk(k,m){
+  const days = weekDays(m).filter(d => inC(k,d));
+  const fromTasks = days.reduce((n,d)=>n+dayStars(k,d),0);
+  const waiting = days.reduce((n,d)=>n+dayWaiting(k,d),0);
+  const allDays = weekDays(m).filter(d=>d>=KIDS[k].start).length;
+  const max = allDays*KIDS[k].tasks.length;
+  const d = dec(k,m), bonus = d===true ? KIDS[k].bonus : 0;
+  return {fromTasks, waiting, max, days:allDays, dec:d, bonus, total:fromTasks+bonus, perfect:fromTasks===max && judgeable(m), judge:judgeable(m)};
+}
+const balance = k => weeks().reduce((n,m)=>n+wk(k,m).total,0);
+const toJudge = k => weeks().filter(m => judgeable(m) && dec(k,m)===null);
+const latestJudgeable = () => weeks().filter(judgeable).at(-1);
+
+/* ================= PARENT ================= */
+function pHead(){
+  const w = Object.keys(KIDS).reduce((n,k)=>n+weeks().flatMap(weekDays).reduce((a,d)=>a+dayWaiting(k,d),0),0);
+  return `<div class="ph"><h1>Inbox</h1><button class="lnk" data-act="contracts">Contracts</button><span class="wpill ${w?"on":""}">${w} waiting</span></div>`;
+}
+function kidHead(k){
+  const w = weeks().flatMap(weekDays).reduce((a,d)=>a+dayWaiting(k,d),0), b = balance(k);
+  return `<div class="kh"><h2>${KIDS[k].name}</h2><div class="m">${b} ★ · ${pln(b*KIDS[k].gr)}${w?`<span class="amb">${w} waiting</span>`:""}</div></div>`;
+}
+function waitingDays(k){
+  return weeks().flatMap(weekDays).filter(d=>dayWaiting(k,d)>0).reverse().map(d=>{
+    const rows = KIDS[k].tasks.map(t=>{const s = state(k,t.id,d);
+      return `<div class="prow"><span class="e">${t.e}</span><span class="n" style="${s==="rejected"?"text-decoration:line-through;color:#9CA3AF":""}">${t.name}</span>${
+        s==="checked_off"?`<span class="wt">waiting</span>`:s==="approved"?`<span class="ok">✓ ★</span>`:s==="rejected"?`<span class="no">✕</span>`:`<span class="muted" style="font-size:13px">not done</span>`}</div>`;}).join("");
+    return `<div class="pc"><div class="hd"><div><h3>${dotDay(d)}</h3><p>${dayWaiting(k,d)} waiting · ${dayStars(k,d)} ★ so far</p></div>
+      <button class="pbtn" data-approve="${k}|${d}">Approve all (${dayWaiting(k,d)})</button></div>${rows}</div>`;
+  }).join("");
+}
+const bonusChip = (k,m,s) => s.dec===true ? `<button class="chip g" data-edit="${k}|${m}">+${KIDS[k].bonus} bonus</button>`
+  : s.dec===false ? `<button class="chip n" data-edit="${k}|${m}">No bonus</button>`
+  : s.judge ? `<span class="chip q">To decide</span>` : `<span class="chip n">after Fri</span>`;
+const decideBtns = (k,m,small) => `<button class="pbtn sec ${small?"sm":""}" data-dec="${k}|${m}|0">${small?"No":"No bonus"}</button><button class="pbtn ${small?"sm":""}" data-dec="${k}|${m}|1">${small?"+":"Grant +"}${KIDS[k].bonus}${small?"":" ★"}</button>`;
+function weekCard(k,m){
+  const s = wk(k,m), kid = KIDS[k];
+  const bars = weekDays(m).map(d=>{const n = kid.tasks.length, f = dayStars(k,d)/n, w = dayWaiting(k,d)/n;
+    return `<div><i class="${w?"w":""}" style="--f:${f};--w:${w}"></i>${WD[wdIdx(d)]}</div>`;}).join("");
+  return `<div class="pc pad wk"><div class="kh" style="gap:6px"><div><b style="font-size:15px">Week of ${range(m)}</b><div class="muted" style="font-size:12px">Weekly bonus in this Contract: +${kid.bonus} ★</div></div></div>
+    <div class="bars">${bars}</div>
+    <div class="sum"><b>${s.fromTasks}</b><span class="muted">of ${s.max} ★ from Tasks</span>${s.perfect?`<span class="perfect">Perfect week</span>`:""}</div>
+    ${s.waiting?`<div class="why">${s.waiting} Check-off${s.waiting>1?"s":""} still waiting. You can decide now or after approving them.</div>`:""}
+    ${m===CUR_MON() && wdIdx(TODAY())===4?`<div class="why">Friday's Tasks can still be checked off until 22:00 tomorrow.</div>`:""}
+    <div class="acts">${decideBtns(k,m)}</div></div>`;
+}
+function receipt(k,m){
+  const s = wk(k,m);
+  return `<div class="pc rcpt"><div class="t">Week of ${range(m)}<small>${s.fromTasks} of ${s.max} ★ from Tasks</small></div>${bonusChip(k,m,s)}<button class="plink" data-edit="${k}|${m}">Change</button></div>`;
+}
+function weekRow(k,m){
+  const s = wk(k,m), n = KIDS[k].tasks.length;
+  const b5 = weekDays(m).map(d => d<KIDS[k].start||d>TODAY() ? `<i class="x"></i>` : `<i style="--f:${dayStars(k,d)/n}"></i>`).join("");
+  const editing = st.edit===k+"|"+m;
+  const ctl = (s.judge && s.dec===null) || editing ? decideBtns(k,m,true) : bonusChip(k,m,s);
+  return `<div class="wrowp ${s.judge&&s.dec===null?"hot":""}"><span class="d"><b>${m===CUR_MON()?"This week":range(m)}</b><small>${s.fromTasks}/${s.max} ★${s.perfect?" · perfect":""}</small></span>
+    <span class="b5">${b5}</span><span class="ctl2">${ctl}</span></div>`;
+}
+const foldedPlaceholder = k => `<div class="pc"><div class="fold"><span>Other days</span><span>folded, as now ▾</span></div></div>`;
+
+function renderPA(){
+  let out = pHead();
+  for (const k of Object.keys(KIDS)) {
+    const lj = latestJudgeable(), pending = toJudge(k);
+    let wkPart = pending.map(m=>weekCard(k,m)).join("");
+    if (lj && !pending.includes(lj) && st.edit!==k+"|"+lj) wkPart = receipt(k,lj) + wkPart;
+    if (st.edit===k+"|"+lj && dec(k,lj)!==null) wkPart = weekCard(k,lj);
+    out += `<section class="kid">${kidHead(k)}${wkPart}${waitingDays(k)}${foldedPlaceholder(k)}
+      <button class="plink" data-sheet="${k}">All weeks and bonuses</button></section>`;
+  }
+  if (st.psheet) {
+    const k = st.psheet;
+    out += `<div class="pop" data-act="shut"><div class="sh" data-stop="1"><div class="kh"><h3>${KIDS[k].name}'s weeks</h3><button class="plink" data-act="shut">Done</button></div>
+      <div class="pc">${[...weeks()].reverse().map(m=>weekRow(k,m)).join("")}</div>
+      <p class="plain" style="margin:0">Tap a bonus to change it while the Contract is open.</p></div></div>`;
+  }
+  return out;
+}
+function renderPB(){
+  if (st.ppage === "contracts") {
+    const k = st.ptab, kid = KIDS[k], b = balance(k);
+    const bonusTotal = weeks().reduce((n,m)=>n+wk(k,m).bonus,0);
+    return `<button class="back" data-act="inbox">‹ Inbox</button><div class="ph"><h1>Contracts</h1></div>
+      <div class="tabs">${Object.keys(KIDS).map(x=>`<button class="${x===k?"on":""}" data-tab="${x}">${KIDS[x].name}</button>`).join("")}</div>
+      <section class="kid"><div class="pc pad"><div class="kh"><b>Open Contract</b><span class="muted" style="font-size:13px">${dm(kid.start)} – 18 Dec</span></div>
+        <div class="cstat"><div><small>Balance</small><b>${b} ★</b></div><div><small>Worth</small><b>${pln(b*kid.gr)}</b></div><div><small>Bonus</small><b>+${kid.bonus}/wk</b></div></div>
+        <p class="plain" style="margin:10px 0 0">${b-bonusTotal} from Tasks + ${bonusTotal} from Weekly bonuses</p></div>
+        <div class="kh" style="margin-top:6px"><h2 style="font-size:17px">Weeks</h2><span class="muted" style="font-size:13px">${toJudge(k).length?`${toJudge(k).length} to decide`:"all decided"}</span></div>
+        <div class="pc">${[...weeks()].reverse().map(m=>weekRow(k,m)).join("")}</div>
+        <p class="plain" style="margin:0">Bars show each day's counted Tasks. Tap a bonus to change it while the Contract is open.</p>
+      </section>`;
+  }
+  let out = pHead();
+  for (const k of Object.keys(KIDS)) {
+    const p = toJudge(k);
+    const ban = p.length ? `<button class="banner" data-goto="${k}">★<span><b>Week of ${range(p[0])}</b> is ready for a Weekly bonus</span>›</button>` : "";
+    out += `<section class="kid">${kidHead(k)}${ban}${waitingDays(k)}${foldedPlaceholder(k)}</section>`;
+  }
+  return out;
+}
+function renderPC(){
+  let out = pHead();
+  for (const k of Object.keys(KIDS)) {
+    const groups = [...weeks()].reverse().map(m=>{
+      const s = wk(k,m), hot = s.judge && s.dec===null, editing = st.edit===k+"|"+m;
+      const ctl = hot || editing ? decideBtns(k,m,true) : bonusChip(k,m,s);
+      const days = weekDays(m).filter(d=>inC(k,d) && dayWaiting(k,d)===0).reverse()
+        .map(d=>`<div class="fold"><span>${dotDay(d)}</span><span>${dayStars(k,d)}/${KIDS[k].tasks.length} ★</span></div>`).join("");
+      return `<div class="wh ${hot?"hot":""}"><b>${m===CUR_MON()?"This week":range(m)}</b><span class="st">${s.fromTasks}/${s.max} ★${s.perfect?" · perfect":""}</span>${ctl}</div>${days}`;
+    }).join("");
+    out += `<section class="kid">${kidHead(k)}${waitingDays(k)}<div class="pc">${groups}</div></section>`;
+  }
+  return out;
+}
+
+/* ================= CHILD (Kuba) ================= */
+const K = "kuba";
+function chWeek(){ return st.chWeek || CUR_MON(); }
+function chDay(){ if (st.chDay) return st.chDay; return chWeek()===CUR_MON() ? (wdIdx(TODAY())>4 ? null : TODAY()) : addDays(chWeek(),4); }
+function cHeader(){
+  const b = balance(K), p = dayStars(K,SCHOOL_TODAY())/KIDS[K].tasks.length*100;
+  return `<header><div class="who"><small>${WDL[wdIdx(TODAY())]} ${dmLong(TODAY())}</small><h1>Hey, Kuba</h1></div>
+    <button class="hbtn" aria-label="Your Contract">${svg("doc")}</button><button class="hbtn" aria-label="Your look">${svg("gear")}</button>
+    <div class="bal ${st.bump?"bump":""}" style="--p:${p}"><b>${star()}${b}</b><small>${starsWord(b)}</small></div></header>`;
+}
+function cBar(){
+  const m = chWeek(), W = weeks(), i = W.indexOf(m);
+  const title = m===CUR_MON() ? "This week" : m===addDays(CUR_MON(),-7) ? "Last week" : range(m);
+  return `<div class="wbar"><button class="arrow" data-act="wprev" ${i===0?"disabled":""} aria-label="Previous week">${svg("l")}</button>
+    <div class="t"><b>${title}</b><small>${range(m)}</small></div>
+    <button class="arrow" data-act="wnext" ${m===CUR_MON()?"disabled":""} aria-label="Next week">${svg("r")}</button></div>`;
+}
+function cStrip(){
+  const m = chWeek(), sel = chDay();
+  return `<nav class="week">${weekDays(m).map(d=>{
+    const fut = d > TODAY(), off = d < KIDS[K].start;
+    const pips = KIDS[K].tasks.map(t=>`<i class="${!fut&&!off&&state(K,t.id,d)==="approved"?"on":""}"></i>`).join("");
+    return `<button class="wd ${d===sel?"sel":""} ${fut?"fut":""} ${off?"off":""}" ${fut?"disabled":`data-cday="${d}"`}><span class="l">${WD[wdIdx(d)]}</span><span class="n">${dnum(d)}</span><span class="pips">${pips}</span></button>`;}).join("")}</nav>`;
+}
+const LABEL = {not_done:"Not done yet", checked_off:"Waiting for a check", approved:"Counted", rejected:"Not counted"};
+function cDay(d){
+  if (!d) {
+    const fri = FRI, left = KIDS[K].tasks.filter(t=>state(K,t.id,fri)==="not_done").length;
+    return `<div class="wkend">${svg("moon")}<h2>No school today</h2><p>Enjoy the weekend.</p></div>
+      ${st.t==="sat"?`<div class="note">Friday is still open until 22:00.${left?` ${left} left.`:""}</div>`:""}`;
+  }
+  if (d < KIDS[K].start) return `<div class="note">No Contract that day, so nothing counted.</div>`;
+  const tiles = KIDS[K].tasks.map(t=>{ const s = state(K,t.id,d);
+    const lbl = s==="not_done" && d<TODAY() ? "Not done" : LABEL[s];
+    return `<div class="tile ${s}"><span class="ic">${svg(t.icon)}</span><span class="bdg">${s==="approved"?svg("check"):s==="checked_off"?svg("clock"):s==="rejected"?svg("x"):""}</span>
+      <b>${t.name}</b><small>${s==="approved"?star()+" +1 · ":""}${lbl}</small></div>`;}).join("");
+  const done = KIDS[K].tasks.filter(t=>state(K,t.id,d)!=="not_done").length;
+  const title = d===TODAY() ? "Today" : d===addDays(TODAY(),-1) ? "Yesterday" : WDL[wdIdx(d)];
+  return `<div class="dh"><h2>${title}${d===TODAY()?"":`<small>${dmLong(d)}</small>`}</h2><span class="pill">${done} / ${KIDS[K].tasks.length} done</span></div><div class="grid">${tiles}</div>`;
+}
+function bonusKV(m, s){
+  if (!s.judge) return `<div class="kv"><small>Weekly bonus</small><b>–<em>decided after Friday</em></b></div>`;
+  if (s.dec===true) return `<div class="kv lit"><small>Weekly bonus</small><b>${star()} +${s.bonus}</b></div>`;
+  if (s.dec===false) return `<div class="kv"><small>Weekly bonus</small><b>0<em>not this week</em></b></div>`;
+  return `<div class="kv"><small>Weekly bonus</small><b>–<em>your parent decides soon</em></b></div>`;
+}
+function cWeekSum(){
+  const m = chWeek(), s = wk(K,m);
+  const head = m===CUR_MON() ? (s.judge ? "This week" : "This week so far") : m===addDays(CUR_MON(),-7) ? "Last week" : `Week of ${dmLong(m)}`;
+  return `<div class="card wsum"><div class="top2"><h3>${head}${s.perfect?` <span class="tag">Perfect week</span>`:""}</h3><b>${star()} ${s.total}</b></div>
+    <div class="kvs"><div class="kv"><small>From Tasks</small><b>${star()} ${s.fromTasks}<em>of ${s.max}</em></b></div>${bonusKV(m,s)}</div>
+    ${s.days<5?`<p>Only ${s.days} of the 5 days were in a Contract.</p>`:""}
+    ${s.waiting&&s.judge?`<p>${s.waiting} still waiting for a check.</p>`:""}</div>`;
+}
+function recap(){
+  // from Monday: last week; on the weekend (or Friday evening): this week
+  const m = wdIdx(TODAY())>=4 ? CUR_MON() : addDays(CUR_MON(),-7);
+  if (!judgeable(m) || st.hid[m] || chWeek()!==CUR_MON()) return "";
+  const s = wk(K,m), label = m===CUR_MON() ? "This week" : "Last week";
+  if (s.dec===null) return `<div class="card recap plainr"><button class="x" data-hide="${m}" aria-label="Hide">${svg("x")}</button><small>${label} · ${range(m)}</small>
+    <div class="eq"><b>${star()}${s.fromTasks}</b><span>from Tasks${s.perfect?" · every one counted":""}</span></div>
+    <p>Your parent hasn't decided the Weekly bonus (+${KIDS[K].bonus}) yet.</p></div>`;
+  const eq = s.dec ? `<b>${star()}${s.fromTasks}</b><span>+ ${s.bonus} bonus =</span><b>${star()}${s.total}</b>` : `<b>${star()}${s.fromTasks}</b><span>no Weekly bonus this time</span>`;
+  return `<div class="card recap ${s.dec?"":"plainr"}"><button class="x" data-hide="${m}" aria-label="Hide">${svg("x")}</button>
+    <small>${label} · ${range(m)} ${s.perfect?`<span class="tag">Perfect week</span>`:""}</small><div class="eq">${eq}</div>
+    <p>${s.dec ? (s.perfect ? "Every Task counted. Solid week." : "Weekly bonus granted. Nice.") : `${s.fromTasks} of ${s.max} counted. Next week's another shot.`}</p></div>`;
+}
+function moment(){
+  const m = weeks().find(w => dec(K,w)===true && !st.seen[w] && !BASE_DEC.hasOwnProperty(K+"|"+w));
+  if (!m) return "";
+  const s = wk(K,m);
+  return `<div class="shade"><div class="moment"><div class="big">${star()}</div><h2>+${s.bonus}</h2><h3>Weekly bonus</h3>
+    <p>For the week of ${range(m)}.<br>${s.fromTasks} of ${s.max} Tasks counted${s.perfect?", a perfect week":""}.</p>
+    <button class="go" data-seen="${m}">Nice</button></div></div>`;
+}
+function renderChild(){
+  const mo = st.cv==="3" ? moment() : "";
+  return `<div class="app ${st.theme==="light"?"light":""} ${mo?"lock":""}"><div class="status"><span>${T().time}</span><span>●●● 5G</span></div>
+    ${cHeader()}${st.cv==="2"?recap():""}${cBar()}${cStrip()}${cDay(chDay())}${cWeekSum()}${mo}</div>`;
+}
+
+/* ================= wiring ================= */
+function seg(el, items, cur, on){
+  el.innerHTML = items.map(([k,l])=>`<button aria-pressed="${k===cur}" data-k="${k}">${l}</button>`).join("");
+  el.onclick = e => { const b = e.target.closest("button"); if (b) on(b.dataset.k); };
+}
+let lastP = "";
+function render(){
+  const ps = document.getElementById("pscr"), cs = document.getElementById("cscr");
+  const pt = ps.scrollTop, ct = cs.scrollTop;
+  ps.innerHTML = `<div class="par ${st.psheet?"lock":""}"><div class="status"><span>${T().time}</span><span>●●● 5G</span></div>${({A:renderPA,B:renderPB,C:renderPC})[st.pv]()}</div>`;
+  const pk = st.pv+st.ppage; ps.scrollTop = pk===lastP && !st.psheet ? pt : 0; lastP = pk;
+  cs.innerHTML = renderChild(); cs.scrollTop = cs.querySelector(".lock") ? 0 : ct;
+  st.bump = false;
+  document.getElementById("lbl").innerHTML = `${st.pv} <small>(${PV[st.pv].name})</small>`;
+  seg(document.getElementById("pSeg"), PORD.map(k=>[k,`${k} ${PV[k].name}`]), st.pv, k=>{st.pv=k; st.ppage="inbox"; st.edit=null; st.psheet=null; render();});
+  seg(document.getElementById("cSeg"), CORD.map(k=>[k,`${k} ${CV[k].name}`]), st.cv, k=>{st.cv=k; render();});
+  seg(document.getElementById("tSeg"), Object.entries(TIMES).map(([k,v])=>[k,v.label]), st.t, k=>{st = {...fresh(st), t:k}; render();});
+  seg(document.getElementById("themeSeg"), [["dark","Dark"],["light","Light"]], st.theme, k=>{st.theme=k; render();});
+  document.getElementById("pAbout").innerHTML = `<h2>Parent ${st.pv} · ${PV[st.pv].name}</h2><ul>${PV[st.pv].about.map(x=>`<li>${x}</li>`).join("")}</ul>`;
+  document.getElementById("cAbout").innerHTML = `<h2>Child ${st.cv} · ${CV[st.cv].name}</h2><ul>${CV[st.cv].about.map(x=>`<li>${x}</li>`).join("")}</ul>
+    <p style="margin:0;color:var(--muted)"><b style="color:var(--ink)">Try:</b> on Monday, grant Kuba's perfect week, then flip it to No bonus. Kuba's balance, week card and recap follow.</p>`;
+}
+document.getElementById("pscr").addEventListener("click", e => {
+  const el = e.target.closest("[data-act],[data-dec],[data-edit],[data-approve],[data-sheet],[data-goto],[data-tab]");
+  if (!el) return;
+  if (el.dataset.act==="shut" && e.target.closest("[data-stop]") && !e.target.closest("button")) return;
+  const d = el.dataset;
+  if (d.dec){ const [k,m,v] = d.dec.split("|"); st.dec[k+"|"+m] = v==="1"; st.edit = null; if (k===K && v==="1") st.bump = true; }
+  else if (d.edit){ st.edit = st.edit===d.edit ? null : d.edit; }
+  else if (d.approve){ const [k,day] = d.approve.split("|"); KIDS[k].tasks.forEach(t=>{ if (state(k,t.id,day)==="checked_off") st.tasks[k+t.id+day] = "approved"; }); }
+  else if (d.sheet){ st.psheet = d.sheet; }
+  else if (d.goto){ st.ppage = "contracts"; st.ptab = d.goto; }
+  else if (d.tab){ st.ptab = d.tab; }
+  else if (d.act==="shut"){ st.psheet = null; st.edit = null; }
+  else if (d.act==="contracts"){ if (st.pv==="B") st.ppage = "contracts"; }
+  else if (d.act==="inbox"){ st.ppage = "inbox"; st.edit = null; }
+  render();
+});
+document.getElementById("cscr").addEventListener("click", e => {
+  const el = e.target.closest("[data-act],[data-cday],[data-hide],[data-seen]");
+  if (!el || el.disabled) return;
+  const W = weeks(), i = W.indexOf(chWeek()), d = el.dataset;
+  if (d.cday) st.chDay = d.cday;
+  if (d.hide) st.hid[d.hide] = true;
+  if (d.seen){ st.seen[d.seen] = true; st.bump = true; }
+  if (d.act==="wprev" && i>0){ st.chWeek = W[i-1]; st.chDay = null; }
+  if (d.act==="wnext" && i<W.length-1){ st.chWeek = W[i+1]; st.chDay = null; }
+  render();
+});
+function cycle(n){ const i = PORD.indexOf(st.pv); st.pv = PORD[(i+n+PORD.length)%PORD.length]; st.ppage="inbox"; st.edit=null; st.psheet=null; render(); }
+document.getElementById("prev").onclick = () => cycle(-1);
+document.getElementById("next").onclick = () => cycle(1);
+document.addEventListener("keydown", e => { if (e.key==="ArrowLeft") cycle(-1); if (e.key==="ArrowRight") cycle(1); });
+document.getElementById("reset").onclick = () => { st = fresh({pv:st.pv, cv:st.cv, theme:st.theme}); render(); };
+render();
+</script>
