@@ -60,6 +60,18 @@ export function taskState(checkedOff: boolean, approved: boolean | undefined): T
   return checkedOff ? "checked_off" : "not_done";
 }
 
+// A day is all done when every Task is checked off or counted and none is Not
+// counted: "part" while some still wait for the parent, "full" once all counted.
+// Future days, days outside a Contract and days without Tasks never are.
+export type DayDone = "full" | "part" | null;
+
+export function dayDone(states: TaskState[], inContract: boolean, future: boolean): DayDone {
+  if (future || !inContract || states.length === 0) return null;
+  if (states.every((s) => s === "approved")) return "full";
+  if (states.every((s) => s === "approved" || s === "checked_off")) return "part";
+  return null;
+}
+
 // A Star is shown as "gwiazdka", with Polish plurals.
 export function starsWord(n: number): string {
   if (n === 1) return "gwiazdka";

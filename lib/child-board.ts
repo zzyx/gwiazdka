@@ -2,10 +2,12 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   canChildChange,
+  dayDone,
   isSchoolDay,
   schoolWeek,
   taskState,
   warsawToday,
+  type DayDone,
   type TaskState,
 } from "./today";
 import { canJudge, mondayOf, recapMonday, shownDay, weekLinks } from "./weeks";
@@ -23,6 +25,8 @@ export type BoardDay = {
   waiting: boolean;
   future: boolean;
   inContract: boolean;
+  // All done: "part" while some wait for the parent, "full" once all counted.
+  done: DayDone;
 };
 
 // A week's Weekly bonus as the child sees it: the Contract's size, and Grant,
@@ -148,13 +152,15 @@ export async function loadBoard(
     schoolWeek(monday).map((day) => {
       const states = tasksOn(day).map((t) => t.state);
       const inContract = contractOn(day) !== null;
+      const future = day > today;
       return {
         day,
         tasks: states.length,
         stars: inContract ? states.filter((s) => s === "approved").length : 0,
         waiting: states.includes("checked_off"),
-        future: day > today,
+        future,
         inContract,
+        done: dayDone(states, inContract, future),
       };
     });
   // Stars from a week's Tasks, out of how many its days so far could earn.

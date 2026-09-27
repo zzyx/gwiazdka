@@ -3,14 +3,14 @@
 import { type LucideIcon, Check, ChevronLeft, ChevronRight, Clock, FileText, Moon, Sun, Undo2, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useOptimistic, useRef, useState, useTransition } from "react";
-import type { Board, BoardTask, Recap, WeekBonus } from "@/lib/child-board";
+import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
+import type { Board, BoardDay, BoardTask, Recap, WeekBonus } from "@/lib/child-board";
 import { RECAP_HIDDEN_COOKIE } from "@/lib/recap";
-import { addDays, formatPln, starsWord, type TaskState } from "@/lib/today";
+import { addDays, dayDone, formatPln, starsWord, type TaskState } from "@/lib/today";
 import { dayMonth, mondayOf, weekRange, weekTitle } from "@/lib/weeks";
 import { setCheckOff } from "./actions";
 import { LookButton } from "./look";
-import { Star } from "./star";
+import { Star, STAR_PATH } from "./star";
 import { TaskIcon } from "./task-icon";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -30,10 +30,45 @@ export function TodayBoard({
   contractNew: boolean;
   recapHidden?: string;
 }) {
-  const shown = board.selected?.tasks ?? [];
+  const { selected } = board;
+  // The shown day's Tasks, with the child's taps applied before the server answers.
+  const [shown, setOptimistic] = useOptimistic(
+    selected?.tasks ?? [],
+    (current: BoardTask[], change: { id: string; state: TaskState }) =>
+      current.map((t) => (t.id === change.id ? { ...t, state: change.state } : t)),
+  );
+  const [, startTransition] = useTransition();
+  const [burst, setBurst] = useState<Burst | null>(null);
   const approved = shown.filter((t) => t.state === "approved").length;
   const ring = shown.length ? Math.round((approved / shown.length) * 100) : 0;
   const thisWeek = board.monday === mondayOf(board.today);
+
+  useEffect(() => {
+    if (!burst) return;
+    const timer = setTimeout(() => setBurst(null), 3000);
+    return () => clearTimeout(timer);
+  }, [burst]);
+
+  // The strip shows the shown day as the child has just left it.
+  const week = board.week.map((d) =>
+    d.day === selected?.day
+      ? { ...d, waiting: shown.some((t) => t.state === "checked_off"), done: doneOf(shown, d) }
+      : d,
+  );
+
+  // Checking off today's last Task plays the Burst.
+  function toggle(task: BoardTask) {
+    if (!selected) return;
+    const state: TaskState = task.state === "not_done" ? "checked_off" : "not_done";
+    const after = shown.map((t) => (t.id === task.id ? { ...t, state } : t));
+    const day = board.week.find((d) => d.day === selected.day);
+    if (thisWeek && day && selected.day === board.today && !doneOf(shown, day) && doneOf(after, day))
+      setBurst({ id: Date.now(), text: `${WEEKDAYS_LONG[weekday(selected.day)]} done. ${after.length} of ${after.length} checked off.` });
+    startTransition(async () => {
+      setOptimistic({ id: task.id, state });
+      await setCheckOff(task.id, selected.day, state === "checked_off");
+    });
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col pb-[max(6rem,calc(env(safe-area-inset-bottom)+5rem))]">
@@ -50,13 +85,23 @@ export function TodayBoard({
         <RecapCard key={board.recap.monday} recap={board.recap} today={board.today} />
       )}
       <WeekBar board={board} />
-      <WeekStrip board={board} />
-      {board.selected ? (
-        <DayTasks key={board.selected.day} board={board} selected={board.selected} />
+      <WeekStrip board={board} week={week} burst={burst} />
+      {selected ? (
+        <DayTasks key={selected.day} board={board} selected={selected} tasks={shown} onToggle={toggle} />
       ) : (
         <Weekend openFriday={board.openFriday} />
       )}
       <WeekTotal board={board} />
+      {burst && (
+        <div
+          key={burst.id}
+          role="status"
+          className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 z-20 flex -translate-x-1/2 animate-[toast_3s_ease_forwards] items-center gap-2 rounded-full bg-(--mn-ink) px-4 py-2.5 text-[13px] font-semibold whitespace-nowrap text-(--mn-bg) shadow-[0_8px_22px_rgba(0,0,0,.35)]"
+        >
+          <Star className="size-4 text-(--acc)" />
+          {burst.text}
+        </div>
+      )}
       {!thisWeek && (
         <Link
           href="/"
@@ -71,6 +116,22 @@ export function TodayBoard({
     </main>
   );
 }
+
+type Burst = { id: number; text: string };
+
+const doneOf = (tasks: BoardTask[], d: BoardDay) => dayDone(tasks.map((t) => t.state), d.inContract, d.future);
+
+// Where the Burst's small stars fly to, spread around the circle.
+const SPARKS = Array.from({ length: 14 }, (_, i) => {
+  const angle = (i / 14) * 2 * Math.PI + (i % 3) * 0.1;
+  const dist = 46 + ((i * 29) % 45);
+  return {
+    "--dx": `${Math.round(Math.cos(angle) * dist)}px`,
+    "--dy": `${Math.round(Math.sin(angle) * dist)}px`,
+    "--r": `${(i * 97) % 360}deg`,
+    animationDelay: `${(i % 3) * 40}ms`,
+  } as React.CSSProperties;
+});
 
 // Opens the "Your Contract" page. A dot marks a Contract the child hasn't looked at yet.
 function ContractButton({ isNew }: { isNew: boolean }) {
@@ -185,12 +246,13 @@ function useWeekSwipe(board: Board) {
   };
 }
 
-function WeekStrip({ board }: { board: Board }) {
+function WeekStrip({ board, week, burst }: { board: Board; week: BoardDay[]; burst: Burst | null }) {
   const swipe = useWeekSwipe(board);
   return (
     <nav {...swipe} className="flex touch-pan-y gap-1.5 px-4 pb-5">
-      {board.week.map((d) => {
+      {week.map((d) => {
         const selected = board.selected?.day === d.day;
+        const bursting = !!burst && d.day === board.today;
         const content = (
           <>
             {d.waiting && (
@@ -202,7 +264,16 @@ function WeekStrip({ board }: { board: Board }) {
             <b className={`text-[11px] font-semibold tracking-widest uppercase ${selected ? "opacity-60" : "text-(--mn-muted)"}`}>
               {WEEKDAYS[weekday(d.day)]}
             </b>
-            <span className="text-base font-bold tabular-nums">{Number(d.day.slice(8, 10))}</span>
+            <DayNumber day={d} selected={selected} />
+            {bursting && (
+              <span aria-hidden className="pointer-events-none absolute top-1/2 left-1/2 motion-reduce:hidden">
+                {SPARKS.map((style, i) => (
+                  <i key={i} style={style} className="absolute -mt-1.5 -ml-1.5 size-3 animate-[fly_.9s_cubic-bezier(.2,.7,.3,1)_forwards] text-(--acc) opacity-0">
+                    <Star className="block size-3" />
+                  </i>
+                ))}
+              </span>
+            )}
             <span className="flex h-1.5 gap-0.5" aria-label={d.future ? undefined : `${d.stars} ${starsWord(d.stars)}`}>
               {Array.from({ length: d.tasks }, (_, i) => (
                 <i
@@ -221,11 +292,15 @@ function WeekStrip({ board }: { board: Board }) {
             : d.day === board.today
               ? "border-(--mn-acc-ink) bg-(--mn-card)"
               : "border-(--mn-line) bg-(--mn-card)"
-        } ${d.future ? "opacity-35" : !d.inContract ? "opacity-55" : ""}`;
+        } ${d.future ? "opacity-35" : !d.inContract ? "opacity-55" : ""} ${
+          bursting ? "z-10 animate-[pop_.55s_cubic-bezier(.3,1.6,.5,1)]" : ""
+        }`;
+        // A new key per Burst replays the pop.
+        const key = bursting ? `${d.day}/${burst?.id}` : d.day;
         return d.future ? (
-          <div key={d.day} className={cls}>{content}</div>
+          <div key={key} className={cls}>{content}</div>
         ) : (
-          <Link key={d.day} href={`/?day=${d.day}`} replace scroll={false} draggable={false} className={cls}>
+          <Link key={key} href={`/?day=${d.day}`} replace scroll={false} draggable={false} className={cls}>
             {content}
           </Link>
         );
@@ -234,26 +309,63 @@ function WeekStrip({ board }: { board: Board }) {
   );
 }
 
-function DayTasks({ board, selected }: { board: Board; selected: NonNullable<Board["selected"]> }) {
-  const [tasks, setOptimistic] = useOptimistic(
-    selected.tasks,
-    (current: BoardTask[], change: { id: string; state: TaskState }) =>
-      current.map((t) => (t.id === change.id ? { ...t, state: change.state } : t)),
+// The day's date, inside a big star once the day is all done: an outline while
+// some Tasks wait for the parent, filled once every one is counted. Every day's
+// slot is the star's height, so the strip doesn't jump when a day lights up.
+function DayNumber({ day, selected }: { day: BoardDay; selected: boolean }) {
+  const { done } = day;
+  return (
+    <span className="relative grid size-[34px] place-items-center">
+      {done && (
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden
+          className={`absolute inset-0 size-full stroke-(--acc) stroke-[1.6] [stroke-linejoin:round] ${
+            done === "full"
+              ? "fill-(--acc) drop-shadow-[0_2px_6px_color-mix(in_srgb,var(--acc)_45%,transparent)]"
+              : "fill-(--acc)/12"
+          }`}
+        >
+          <path d={STAR_PATH} />
+        </svg>
+      )}
+      <span
+        className={`relative tabular-nums ${
+          !done
+            ? "text-base font-bold"
+            : `pt-[3px] text-[13px] font-extrabold ${
+                done === "full" ? "text-[#1A1405]" : selected ? "text-(--acc)" : "text-(--mn-acc-ink)"
+              }`
+        }`}
+      >
+        {Number(day.day.slice(8, 10))}
+      </span>
+      {done && <span className="sr-only">{done === "full" ? ", all counted" : ", all done, waiting for a check"}</span>}
+    </span>
   );
+}
+
+function DayTasks({
+  board,
+  selected,
+  tasks,
+  onToggle,
+}: {
+  board: Board;
+  selected: NonNullable<Board["selected"]>;
+  tasks: BoardTask[];
+  onToggle: (task: BoardTask) => void;
+}) {
   const [popped, setPopped] = useState<string>();
-  const [, startTransition] = useTransition();
   const isToday = selected.day === board.today;
   const isYesterday = selected.day === addDays(board.today, -1);
   const past = selected.day < board.today;
   const done = tasks.filter((t) => t.state !== "not_done" && t.state !== "rejected").length;
+  const allDone = dayDone(tasks.map((t) => t.state), selected.contract !== null, false);
 
   function toggle(task: BoardTask) {
-    const checking = task.state === "not_done";
-    setPopped(checking ? task.id : undefined);
-    startTransition(async () => {
-      setOptimistic({ id: task.id, state: checking ? "checked_off" : "not_done" });
-      await setCheckOff(task.id, selected.day, checking);
-    });
+    setPopped(task.state === "not_done" ? task.id : undefined);
+    onToggle(task);
   }
 
   return (
@@ -265,9 +377,15 @@ function DayTasks({ board, selected }: { board: Board; selected: NonNullable<Boa
             <small className="ml-1.5 text-[13px] font-medium text-(--mn-muted)">{dayMonth(selected.day)}</small>
           )}
         </span>
-        <small className="shrink-0 rounded-full border border-(--mn-line) bg-(--mn-card) px-2.5 py-1 text-xs font-normal text-(--mn-muted) tabular-nums">
-          {selected.contract ? `${done} / ${tasks.length} done` : "–"}
-        </small>
+        {allDone ? (
+          <small className="shrink-0 rounded-full border border-(--acc)/55 bg-(--mn-card) px-2.5 py-1 text-xs font-semibold text-(--mn-acc-ink)">
+            {allDone === "full" ? "All counted" : "All done"}
+          </small>
+        ) : (
+          <small className="shrink-0 rounded-full border border-(--mn-line) bg-(--mn-card) px-2.5 py-1 text-xs font-normal text-(--mn-muted) tabular-nums">
+            {selected.contract ? `${done} / ${tasks.length} done` : "–"}
+          </small>
+        )}
       </h2>
       {!selected.contract ? (
         isToday ? (

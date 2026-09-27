@@ -21,6 +21,19 @@ body {
   100% { box-shadow: 0 0 0 14px transparent; }
 }
 
+/* The all-done Burst: small stars fly out of today, and a short toast. */
+@keyframes fly {
+  0% { opacity: 1; transform: translate(0, 0) scale(0.4) rotate(0); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1) rotate(var(--r)); }
+}
+
+@keyframes toast {
+  0% { opacity: 0; translate: -50% 10px; }
+  10%, 80% { opacity: 1; translate: -50% 0; }
+  100% { opacity: 0; translate: -50% 0; }
+}
+
 /* The child's "Midnight" look. Dark first; light when chosen, or on "auto" when the phone is light. */
 .midnight {
   --mn-bg: #0a0e1c;
