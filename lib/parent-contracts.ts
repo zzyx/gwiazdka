@@ -11,7 +11,10 @@ export type OpenContract = {
   ends_on: string;
   grosze_per_star: number;
   weekly_bonus_stars: number;
+  // The balance, and its parts from Tasks and from granted Weekly bonuses.
   stars: number;
+  taskStars: number;
+  bonusStars: number;
   waiting: number;
   // Days with Check-offs still waiting for Approval, newest first.
   waitingDays: InboxDay[];
@@ -46,7 +49,7 @@ export type ChildContracts = {
 // Each of the parent's children with their Contracts, read with the parent's session (RLS).
 export async function loadContracts(supabase: SupabaseClient, now: Date): Promise<ChildContracts[]> {
   const today = warsawToday(now);
-  const [children, contracts, payouts, tasks, checkOffs, approvals] = await Promise.all([
+  const [children, contracts, payouts, tasks, checkOffs, approvals, bonuses] = await Promise.all([
     supabase.from("children").select("id, name").order("name"),
     supabase
       .from("contracts")
@@ -58,8 +61,9 @@ export async function loadContracts(supabase: SupabaseClient, now: Date): Promis
     supabase.from("tasks").select("id, child_id, name, icon, position, active_from, active_until"),
     supabase.from("check_offs").select("task_id, day"),
     supabase.from("approvals").select("task_id, day, approved"),
+    supabase.from("weekly_bonuses").select("contract_id, week_of, granted"),
   ]);
-  for (const r of [children, contracts, payouts, tasks, checkOffs, approvals]) if (r.error) throw r.error;
+  for (const r of [children, contracts, payouts, tasks, checkOffs, approvals, bonuses]) if (r.error) throw r.error;
 
   return children.data!.map((child) => {
     const own = tasks.data!.filter((t) => t.child_id === child.id);
@@ -77,6 +81,7 @@ export async function loadContracts(supabase: SupabaseClient, now: Date): Promis
         tasks: own,
         checkOffs: checkOffs.data!.filter(inRange),
         approvals: approvals.data!.filter(inRange),
+        bonuses: bonuses.data!.filter((b) => b.contract_id === openRow.id),
       });
       open = {
         id: openRow.id,
@@ -85,6 +90,8 @@ export async function loadContracts(supabase: SupabaseClient, now: Date): Promis
         grosze_per_star: openRow.grosze_per_star,
         weekly_bonus_stars: openRow.weekly_bonus_stars,
         stars: inbox.stars,
+        taskStars: inbox.taskStars,
+        bonusStars: inbox.bonusStars,
         waiting: inbox.waiting,
         waitingDays: inbox.waitingDays,
       };

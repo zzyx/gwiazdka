@@ -108,7 +108,7 @@ function ContractCard({ child, open, today }: { child: ChildContracts; open: Ope
         <span>{starsWord(open.stars)}</span>
         <span className="ml-auto text-xl font-bold">{formatPln(open.stars * open.grosze_per_star)}</span>
       </div>
-      <p className="-mt-2 text-xs text-[#6B7280]">{open.stars} from Tasks · 0 from Weekly bonuses</p>
+      <p className="-mt-2 text-xs text-[#6B7280]">{open.taskStars} from Tasks + {open.bonusStars} from Weekly bonuses</p>
       <div className="h-2 overflow-hidden rounded-full bg-[#E5E7EB]">
         <div className="h-full bg-[#2563EB]" style={{ width: `${pct}%` }} />
       </div>
@@ -362,9 +362,9 @@ function SheetFor({
         </div>
         <dl className="mb-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
           <dt className="text-[#6B7280]">From Tasks</dt>
-          <dd className="text-right">{open.stars}</dd>
+          <dd className="text-right">{open.taskStars}</dd>
           <dt className="text-[#6B7280]">Weekly bonuses</dt>
-          <dd className="text-right">0</dd>
+          <dd className="text-right">{open.bonusStars}</dd>
           {open.waiting > 0 && (
             <>
               <dt className="text-[#6B7280]">Pending, not counted</dt>

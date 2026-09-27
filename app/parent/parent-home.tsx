@@ -3,11 +3,12 @@ import type { InboxDay, InboxRow } from "@/lib/inbox";
 import { loadInbox, type ChildSection } from "@/lib/parent-inbox";
 import { createClient } from "@/lib/supabase/server";
 import { taskEmoji } from "@/lib/task-icons";
-import { formatPln } from "@/lib/today";
+import { formatPln, warsawToday } from "@/lib/today";
 import { signOut } from "../sign-in/actions";
 import { approveAll, decide } from "./actions";
 import { figtree } from "./font";
 import { JoinCodeButton } from "./join-code-button";
+import { AllWeeks, WeekCards } from "./week-bonus";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const dayLabel = (day: string) =>
@@ -19,7 +20,9 @@ const RECENT_DAYS = 10;
 // The parent's "Inbox by child".
 export async function ParentHome() {
   const supabase = await createClient();
-  const sections = await loadInbox(supabase, new Date());
+  const now = new Date();
+  const sections = await loadInbox(supabase, now);
+  const today = warsawToday(now);
   const waiting = sections.reduce((sum, s) => sum + (s.inbox?.waiting ?? 0), 0);
 
   return (
@@ -37,7 +40,7 @@ export async function ParentHome() {
         </span>
       </header>
       {sections.map((s) => (
-        <ChildInboxSection key={s.id} section={s} />
+        <ChildInboxSection key={s.id} section={s} today={today} />
       ))}
       <form action={signOut} className="mt-auto">
         <button className="text-sm text-[#6B7280] underline">Sign out</button>
@@ -46,8 +49,9 @@ export async function ParentHome() {
   );
 }
 
-function ChildInboxSection({ section }: { section: ChildSection }) {
-  const { inbox } = section;
+function ChildInboxSection({ section, today }: { section: ChildSection; today: string }) {
+  const { inbox, contractId } = section;
+  const bonus = inbox && contractId && inbox.weeklyBonus > 0 ? { contractId, size: inbox.weeklyBonus, today } : null;
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
@@ -74,6 +78,7 @@ function ChildInboxSection({ section }: { section: ChildSection }) {
         </p>
       ) : (
         <>
+          {bonus && <WeekCards weeks={inbox.weeks} {...bonus} />}
           {inbox.waitingDays.length === 0 && (
             <p className="rounded-xl bg-white p-4 text-sm text-[#6B7280]">Nothing is waiting for you.</p>
           )}
@@ -99,6 +104,7 @@ function ChildInboxSection({ section }: { section: ChildSection }) {
               )}
             </div>
           )}
+          {bonus && <AllWeeks weeks={inbox.weeks} {...bonus} />}
         </>
       )}
       <JoinCodeButton childId={section.id} />

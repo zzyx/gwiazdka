@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayMonth, shownDay, weekLinks, weekRange, weekTitle } from "./weeks";
+import { canJudge, dayMonth, recapMonday, shownDay, weekLinks, weekRange, weekTitle } from "./weeks";
 
 // Wednesday 23 September 2026; history starts Tuesday 1 September.
 const today = "2026-09-23";
@@ -63,5 +63,22 @@ describe("weekLinks", () => {
   });
   it("steps back to Friday from the weekend card", () => {
     expect(weekLinks("2026-09-21", null, "2026-09-27", firstDay).prev).toBe("/?day=2026-09-18");
+  });
+});
+
+describe("canJudge", () => {
+  it("lets a week be decided from its Friday", () => {
+    expect(canJudge("2026-09-21", "2026-09-24")).toBe(false);
+    expect(canJudge("2026-09-21", "2026-09-25")).toBe(true);
+    expect(canJudge("2026-09-14", "2026-09-21")).toBe(true);
+  });
+});
+
+describe("recapMonday", () => {
+  it("covers last week from Monday and this week from Friday through the weekend", () => {
+    expect(recapMonday("2026-09-21")).toBe("2026-09-14");
+    expect(recapMonday("2026-09-24")).toBe("2026-09-14");
+    expect(recapMonday("2026-09-25")).toBe("2026-09-21");
+    expect(recapMonday("2026-09-27")).toBe("2026-09-21");
   });
 });

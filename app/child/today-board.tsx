@@ -4,7 +4,8 @@ import { type LucideIcon, Check, ChevronLeft, ChevronRight, Clock, FileText, Moo
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useOptimistic, useRef, useState, useTransition } from "react";
-import type { Board, BoardTask } from "@/lib/child-board";
+import type { Board, BoardTask, Recap, WeekBonus } from "@/lib/child-board";
+import { RECAP_HIDDEN_COOKIE } from "@/lib/recap";
 import { addDays, formatPln, starsWord, type TaskState } from "@/lib/today";
 import { dayMonth, mondayOf, weekRange, weekTitle } from "@/lib/weeks";
 import { setCheckOff } from "./actions";
@@ -18,7 +19,17 @@ const WEEKDAYS_LONG = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "
 const weekday = (day: string) => (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7;
 const longDate = (day: string) => `${WEEKDAYS_LONG[weekday(day)]} ${dayMonth(day)}`;
 
-export function TodayBoard({ name, board, contractNew }: { name: string; board: Board; contractNew: boolean }) {
+export function TodayBoard({
+  name,
+  board,
+  contractNew,
+  recapHidden,
+}: {
+  name: string;
+  board: Board;
+  contractNew: boolean;
+  recapHidden?: string;
+}) {
   const shown = board.selected?.tasks ?? [];
   const approved = shown.filter((t) => t.state === "approved").length;
   const ring = shown.length ? Math.round((approved / shown.length) * 100) : 0;
@@ -35,6 +46,9 @@ export function TodayBoard({ name, board, contractNew }: { name: string; board: 
         <LookButton />
         {board.balance && <Balance {...board.balance} ring={ring} />}
       </header>
+      {board.recap && board.recap.monday !== recapHidden && (
+        <RecapCard key={board.recap.monday} recap={board.recap} today={board.today} />
+      )}
       <WeekBar board={board} />
       <WeekStrip board={board} />
       {board.selected ? (
@@ -384,22 +398,29 @@ function Note({ children, grey = false, icon: Icon }: { children: React.ReactNod
   );
 }
 
-// The shown week's Stars: from its Tasks, plus the Weekly bonus (none can be granted yet).
+// The shown week's Stars: from its Tasks, plus the Weekly bonus once granted.
 function WeekTotal({ board }: { board: Board }) {
   const thisWeek = board.monday === mondayOf(board.today);
+  const { stars, max, contractDays } = board.total;
+  const { bonus } = board;
   const title = thisWeek
-    ? "This week so far"
+    ? bonus?.judgeable
+      ? "This week"
+      : "This week so far"
     : board.monday === addDays(mondayOf(board.today), -7)
       ? "Last week"
       : `Week of ${dayMonth(board.monday)}`;
-  const { stars, max, contractDays } = board.total;
+  const bonusStars = bonus?.granted ? bonus.size : 0;
   return (
     <section className="mx-4 mt-5 flex flex-col gap-3 rounded-[20px] border border-(--mn-line) bg-(--mn-card) p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-[15px] font-bold">{title}</h3>
+        <h3 className="flex flex-wrap items-center gap-2 text-[15px] font-bold">
+          {title}
+          {bonus?.perfect && <PerfectTag />}
+        </h3>
         <b className="flex items-center gap-1 text-[22px] font-extrabold text-(--mn-acc-ink) tabular-nums">
           <Star className="size-4.5" />
-          {stars}
+          {stars + bonusStars}
         </b>
       </div>
       {contractDays === 0 ? (
@@ -414,15 +435,7 @@ function WeekTotal({ board }: { board: Board }) {
               {stars}
               <em className="text-xs font-medium text-(--mn-muted) not-italic">of {max}</em>
             </Count>
-            <Count label="Weekly bonus">
-              {thisWeek ? (
-                <>
-                  –<em className="text-xs font-medium text-(--mn-muted) not-italic">decided after Friday</em>
-                </>
-              ) : (
-                0
-              )}
-            </Count>
+            <BonusCount bonus={bonus} />
           </div>
           {contractDays < 5 && (
             <p className="text-[13px] leading-snug text-(--mn-muted)">
@@ -435,11 +448,116 @@ function WeekTotal({ board }: { board: Board }) {
   );
 }
 
-function Count({ label, children }: { label: string; children: React.ReactNode }) {
+function BonusCount({ bonus }: { bonus: WeekBonus | null }) {
+  const note = (text: string) => <em className="text-xs font-medium text-(--mn-muted) not-italic">{text}</em>;
+  if (bonus?.granted)
+    return (
+      <Count label="Weekly bonus" lit>
+        <Star className="size-3.5" />+{bonus.size}
+      </Count>
+    );
   return (
-    <div className="flex flex-col gap-0.5 rounded-2xl bg-(--mn-line)/45 px-3 py-2.5">
+    <Count label="Weekly bonus">
+      {!bonus || bonus.size === 0 ? (
+        <>0{note("none in this Contract")}</>
+      ) : bonus.granted === false ? (
+        <>0{note("not this week")}</>
+      ) : bonus.judgeable ? (
+        <>–{note("your parent decides soon")}</>
+      ) : (
+        <>–{note("decided after Friday")}</>
+      )}
+    </Count>
+  );
+}
+
+function PerfectTag() {
+  return (
+    <span className="rounded-md border border-(--acc)/50 px-1.5 py-px text-[10px] font-bold tracking-wider text-(--mn-acc-ink) uppercase">
+      Perfect week
+    </span>
+  );
+}
+
+// The week just judged, at the top of Today: its Stars and the Weekly bonus.
+// The × hides it on this device until the next week's recap.
+function RecapCard({ recap, today }: { recap: Recap; today: string }) {
+  const [hidden, setHidden] = useState(false);
+  if (hidden) return null;
+  const { fromTasks, max, bonus } = recap;
+  const hide = () => {
+    document.cookie = `${RECAP_HIDDEN_COOKIE}=${recap.monday}; path=/; max-age=31536000; samesite=lax`;
+    setHidden(true);
+  };
+  const big = (n: number) => (
+    <b className="flex items-center gap-1 text-2xl font-extrabold text-(--mn-acc-ink)">
+      <Star className="size-5" />
+      {n}
+    </b>
+  );
+  const small = (text: string) => <span className="text-sm text-(--mn-muted)">{text}</span>;
+  return (
+    <section
+      className={`relative mx-4 mb-3.5 flex flex-col gap-2.5 rounded-[20px] border p-4 ${
+        bonus.granted
+          ? "border-(--acc)/40 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--acc)_18%,var(--mn-card)),var(--mn-card)_70%)]"
+          : "border-(--mn-line) bg-(--mn-card)"
+      }`}
+    >
+      <button
+        onClick={hide}
+        aria-label="Hide"
+        className="absolute top-2.5 right-2.5 grid size-7.5 place-items-center rounded-full text-(--mn-muted)"
+      >
+        <X className="size-4" aria-hidden />
+      </button>
+      <small className="flex flex-wrap items-center gap-2 pr-8 text-xs font-semibold tracking-wider text-(--mn-muted) uppercase">
+        {recap.monday === mondayOf(today) ? "This week" : "Last week"} · {weekRange(recap.monday)}
+        {bonus.perfect && bonus.granted !== null && <PerfectTag />}
+      </small>
+      <div className="flex flex-wrap items-baseline gap-2 tabular-nums">
+        {bonus.granted ? (
+          <>
+            {big(fromTasks)}
+            {small(`+ ${bonus.size} bonus =`)}
+            {big(fromTasks + bonus.size)}
+          </>
+        ) : bonus.granted === false ? (
+          <>
+            {big(fromTasks)}
+            {small("no Weekly bonus this time")}
+          </>
+        ) : (
+          <>
+            {big(fromTasks)}
+            {small(`from Tasks${bonus.perfect ? " · every one counted" : ""}`)}
+          </>
+        )}
+      </div>
+      <p className="pr-6 text-[13px] leading-snug text-(--mn-muted)">
+        {bonus.granted
+          ? bonus.perfect
+            ? "Every Task counted. Solid week."
+            : "Weekly bonus granted. Nice."
+          : bonus.granted === false
+            ? `${fromTasks} of ${max} counted. Next week's another shot.`
+            : `Your parent hasn't decided the Weekly bonus (+${bonus.size}) yet.`}
+      </p>
+    </section>
+  );
+}
+
+function Count({ label, lit = false, children }: { label: string; lit?: boolean; children: React.ReactNode }) {
+  return (
+    <div
+      className={`flex flex-col gap-0.5 rounded-2xl px-3 py-2.5 ${
+        lit ? "bg-(--acc)/16 outline outline-(--acc)/45" : "bg-(--mn-line)/45"
+      }`}
+    >
       <small className="text-[11px] font-semibold tracking-wider text-(--mn-muted) uppercase">{label}</small>
-      <b className="flex flex-wrap items-center gap-1 text-base tabular-nums">{children}</b>
+      <b className={`flex flex-wrap items-center gap-1 text-base tabular-nums ${lit ? "text-(--mn-acc-ink)" : ""}`}>
+        {children}
+      </b>
     </div>
   );
 }

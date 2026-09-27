@@ -29,7 +29,7 @@ The parent's decision on one Task on one School day: approved earns one Star, re
 _Avoid_: accept, confirm, review
 
 **Weekly bonus**:
-Extra Stars the parent grants a child by hand, at most once per week, after judging that week. Its size is set by the Contract; it is never computed automatically.
+Extra Stars the parent grants a child by hand, at most once per week, after judging that week. Its size is set by the Contract; it is never computed automatically. For each week of the open Contract, from its Friday on, the parent decides Grant or No bonus and can change it until the Payout. Only the decision is stored: like the rate, the Contract's current size counts for every granted week.
 _Avoid_: streak, weekly reward
 
 **Contract**:

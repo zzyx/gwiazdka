@@ -11,7 +11,7 @@ export type ChildContract = {
     ends_on: string;
     grosze_per_star: number;
     weekly_bonus_stars: number;
-    // Stars so far: from approved Tasks, and from Weekly bonuses (none can be granted yet).
+    // Stars so far: from approved Tasks, and from granted Weekly bonuses.
     taskStars: number;
     bonusStars: number;
     // How many Tasks the child has on a School day now.
@@ -34,7 +34,7 @@ export async function loadChildContract(
       .select("id, starts_on, ends_on, grosze_per_star, weekly_bonus_stars, closed_on")
       .eq("child_id", childId)
       .order("starts_on", { ascending: false }),
-    supabase.from("star_balances").select("contract_id, stars").eq("child_id", childId),
+    supabase.from("star_balances").select("contract_id, task_stars, bonus_stars").eq("child_id", childId),
     supabase
       .from("tasks")
       .select("id")
@@ -61,8 +61,8 @@ export async function loadChildContract(
           ends_on: open.ends_on,
           grosze_per_star: open.grosze_per_star,
           weekly_bonus_stars: open.weekly_bonus_stars,
-          taskStars: balance?.stars ?? 0,
-          bonusStars: 0,
+          taskStars: balance?.task_stars ?? 0,
+          bonusStars: balance?.bonus_stars ?? 0,
           tasksPerDay: tasks.data!.length,
         }
       : null,
