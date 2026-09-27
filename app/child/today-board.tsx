@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Clock, Moon, X } from "lucide-react";
+import { Check, Clock, FileText, Moon, X } from "lucide-react";
 import Link from "next/link";
 import { useOptimistic, useState, useTransition } from "react";
 import type { Board, BoardTask } from "@/lib/child-board";
@@ -18,7 +18,7 @@ const weekday = (day: string) => (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) 
 const longDate = (day: string) =>
   `${WEEKDAYS_LONG[weekday(day)]} ${Number(day.slice(8, 10))} ${MONTHS[Number(day.slice(5, 7)) - 1]}`;
 
-export function TodayBoard({ name, board }: { name: string; board: Board }) {
+export function TodayBoard({ name, board, contractNew }: { name: string; board: Board; contractNew: boolean }) {
   const shown = board.selected?.tasks ?? [];
   const approved = shown.filter((t) => t.state === "approved").length;
   const ring = shown.length ? Math.round((approved / shown.length) * 100) : 0;
@@ -30,6 +30,7 @@ export function TodayBoard({ name, board }: { name: string; board: Board }) {
           <p className="text-xs text-(--mn-muted)">{longDate(board.today)}</p>
           <h1 className="mt-0.5 truncate text-2xl font-bold tracking-tight">Hey, {name}</h1>
         </div>
+        <ContractButton isNew={contractNew} />
         <LookButton />
         {board.balance && <Balance {...board.balance} ring={ring} />}
       </header>
@@ -40,6 +41,22 @@ export function TodayBoard({ name, board }: { name: string; board: Board }) {
         <Weekend openFriday={board.openFriday} />
       )}
     </main>
+  );
+}
+
+// Opens the "Your Contract" page. A dot marks a Contract the child hasn't looked at yet.
+function ContractButton({ isNew }: { isNew: boolean }) {
+  return (
+    <Link
+      href="/contract"
+      aria-label={isNew ? "Your Contract (new)" : "Your Contract"}
+      className="relative grid size-9 shrink-0 place-items-center rounded-full border border-(--mn-line) bg-(--mn-card) text-(--mn-muted) active:scale-95"
+    >
+      <FileText className="size-4.5" strokeWidth={2} aria-hidden />
+      {isNew && (
+        <span className="absolute -top-0.5 -right-0.5 box-content size-2 rounded-full border-2 border-(--mn-bg) bg-(--acc)" />
+      )}
+    </Link>
   );
 }
 

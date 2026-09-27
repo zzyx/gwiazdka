@@ -22,6 +22,8 @@ export type BoardDay = {
 
 export type Board = {
   today: string;
+  // The open Contract's id, or null when there is none.
+  contractId: string | null;
   // Null when the child has no open Contract: they see Today but can't check off.
   balance: { stars: number; groszePerStar: number } | null;
   week: BoardDay[];
@@ -55,7 +57,7 @@ export async function loadBoard(
 
   const [balances, contracts, tasks, checkOffs, approvals] = await Promise.all([
     supabase.from("star_balances").select("stars, grosze_per_star").eq("child_id", childId),
-    supabase.from("contracts").select("starts_on, ends_on").eq("child_id", childId).is("closed_on", null),
+    supabase.from("contracts").select("id, starts_on, ends_on").eq("child_id", childId).is("closed_on", null),
     supabase.from("tasks").select("id, name, icon, position, active_from, active_until").eq("child_id", childId).order("position"),
     supabase.from("check_offs").select("task_id, day").gte("day", week[0]).lte("day", week[4]),
     supabase.from("approvals").select("task_id, day, approved").gte("day", week[0]).lte("day", week[4]),
@@ -105,6 +107,7 @@ export async function loadBoard(
   const balance = balances.data![0];
   return {
     today,
+    contractId: contract?.id ?? null,
     balance: balance ? { stars: balance.stars, groszePerStar: balance.grosze_per_star } : null,
     week: weekDays,
     selected: shown

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  contractTimeline,
   mostItCanPay,
   nextSchoolDay,
   openContractState,
@@ -80,5 +81,44 @@ describe("mostItCanPay", () => {
       weeks: 2,
       stars: 34,
     });
+  });
+});
+
+describe("contractTimeline", () => {
+  // Tue 1 Sep to Tue 29 Sep: 21 School days.
+  const c = { starts_on: "2026-09-01", ends_on: "2026-09-29" };
+
+  it("counts what's left after today and the share of School days gone", () => {
+    expect(contractTimeline(c, "2026-09-07")).toEqual({
+      state: "running",
+      all: 21,
+      done: 5,
+      left: 16,
+      percent: 24,
+      endsSoon: false,
+    });
+  });
+
+  it("ends soon with 3 School days or fewer left", () => {
+    // Thu 24 Sep: Fri, Mon and Tue are left.
+    expect(contractTimeline(c, "2026-09-24")).toMatchObject({ left: 3, endsSoon: true });
+    expect(contractTimeline(c, "2026-09-23")).toMatchObject({ left: 4, endsSoon: false });
+    // The weekend before the last two days.
+    expect(contractTimeline(c, "2026-09-26")).toMatchObject({ left: 2, endsSoon: true });
+  });
+
+  it("is full and no longer ending soon once the end date has passed", () => {
+    expect(contractTimeline(c, "2026-10-01")).toEqual({
+      state: "ended",
+      all: 21,
+      done: 21,
+      left: 0,
+      percent: 100,
+      endsSoon: false,
+    });
+  });
+
+  it("is empty before the start", () => {
+    expect(contractTimeline(c, "2026-08-28")).toMatchObject({ state: "soon", done: 0, left: 21, percent: 0, endsSoon: false });
   });
 });
