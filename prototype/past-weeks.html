@@ -1,0 +1,556 @@
+<title>Gwiazdki Past Weeks</title>
+<!--
+  PROTOTYPE, throwaway. Answers zzyx/gwiazdka#30: how does the child (a teen, 13 to 17)
+  look back at previous weeks?
+  Three ways, on the Midnight Today screen as shipped (plus the Contract button from #34 / PR #36),
+  switchable from the floating bar (or ← →):
+    A  Arrows and swipe on the week strip (step one week at a time, in place)
+    B  A "Past weeks" page from a header button (list grouped by Contract, tap a week to open it)
+    C  A calendar sheet (tap the week label, jump to any day)
+  Defaults taken: navigation stops at the current week (no looking ahead); weeks outside any
+  Contract are shown but count nothing; weeks of a paid-out Contract are read-only and say so;
+  the Weekly bonus slot is shown ahead of #29.
+  State is in memory only. Sample data (Kuba, his Tasks, both Contracts) is made up.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap">
+<style>
+/* ---------- page around the phone ---------- */
+:root{
+  --bg:#EEF0F5; --panel:#FFFFFF; --ink:#1C2030; --muted:#5B6278; --line:#D9DDE7;
+  --accent:#2F5BEA; --chip:#E4E8F3; --bar:#141824; --bar-ink:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#12141B; --panel:#1C1F2A; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+    --accent:#8FA8FF; --chip:#262B3A; --bar:#F1F3F9; --bar-ink:#12141B;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#12141B; --panel:#1C1F2A; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+  --accent:#8FA8FF; --chip:#262B3A; --bar:#F1F3F9; --bar-ink:#12141B;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:Figtree,system-ui,-apple-system,sans-serif;font-size:14px;padding-inline:16px;padding-block:20px 96px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1040px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:32px;align-items:start}
+.side{display:flex;flex-direction:column;gap:18px;max-width:520px}
+.side h1{font-size:24px;line-height:1.2;margin:0;text-wrap:balance}
+.side p{margin:0;color:var(--muted);line-height:1.5}
+.ctl{display:flex;flex-direction:column;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ctl-row>span{width:84px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.seg{display:inline-flex;background:var(--chip);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:8px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.reset{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 12px;font-weight:600}
+.about{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.about h2{margin:0;font-size:16px}
+.about ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;color:var(--muted);line-height:1.45}
+.about b{color:var(--ink)}
+.phone-col{display:flex;flex-direction:column;gap:12px;align-items:center}
+.phone{width:390px;max-width:100%;height:780px;border-radius:44px;border:10px solid #0D0F16;background:#0D0F16;overflow:hidden;position:relative;box-shadow:0 20px 50px rgba(20,24,40,.25)}
+.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;border-radius:34px}
+.hint{font-size:12px;color:var(--muted);text-align:center;max-width:360px;line-height:1.45}
+@media (max-width:860px){ .wrap{grid-template-columns:1fr} .phone-col{order:-1} .side{max-width:none} }
+@media (max-width:480px){
+  body{padding-inline:8px}
+  .switcher .lbl small{display:none}
+  .phone{border-width:0;border-radius:18px;height:720px;box-shadow:none}
+  .screen{border-radius:18px}
+}
+.switcher{position:fixed;left:50%;transform:translateX(-50%);bottom:0;margin-bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;align-items:center;gap:4px;background:var(--bar);color:var(--bar-ink);border-radius:999px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:calc(100% - 24px)}
+.switcher button{border:0;background:transparent;color:inherit;width:40px;height:40px;border-radius:50%;font-size:18px;flex:none}
+.switcher button:hover{background:rgba(127,127,127,.25)}
+.switcher .lbl{padding:0 10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switcher .lbl small{opacity:.65;font-weight:500}
+
+/* ---------- the child's app: Midnight, as shipped in #32 ---------- */
+.app{--bgB:#0A0E1C;--cardB:#141A2E;--card2B:#1B2340;--inkB:#EEF1FF;--mutB:#8A93B8;--lineB:#252E4D;--acc:#FFC54D;--accInk:var(--acc);--wait:#7FA7FF;
+  min-height:100%;padding-bottom:36px;position:relative;
+  background:radial-gradient(120% 50% at 85% -10%,color-mix(in srgb,var(--acc) 14%,transparent),transparent 60%),var(--bgB);
+  color:var(--inkB);font-family:Sora,system-ui,sans-serif;color-scheme:dark}
+.app.lock{height:100%;overflow:hidden}
+.app.light{--bgB:#EEF0F7;--cardB:#FFFFFF;--card2B:#F4F5FA;--inkB:#10142A;--mutB:#5E6688;--lineB:#DCE0EE;--wait:#3867E0;--accInk:color-mix(in oklab,var(--acc),#10142A 45%);color-scheme:light}
+.app svg.i{width:1em;height:1em;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.app svg.st{width:1em;height:1em;display:inline-block;vertical-align:-.12em;flex:none}
+.app button{border:0;background:none;padding:0;text-align:left}
+.status{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font:600 14px Figtree,system-ui,sans-serif}
+.app header{padding:6px 20px 16px;display:flex;align-items:center;gap:12px}
+.who{flex:1;min-width:0}
+.who small{display:block;font-size:12px;color:var(--mutB)}
+.who h1{margin:2px 0 0;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.hbtn{width:40px;height:40px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;color:var(--mutB);font-size:18px;position:relative}
+.hbtn.new::after{content:"";position:absolute;top:1px;right:1px;width:9px;height:9px;border-radius:50%;background:var(--acc);border:2px solid var(--bgB)}
+.bal{display:flex!important;flex-direction:column;align-items:center;justify-content:center;width:96px;height:96px;border-radius:50%;background:var(--cardB)!important;border:1px solid var(--lineB)!important;position:relative;flex:none}
+.bal::before{content:"";position:absolute;inset:-1px;border-radius:50%;background:conic-gradient(var(--acc) calc(var(--p)*1%),transparent 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))}
+.bal b{font-size:26px;font-weight:800;color:var(--accInk);display:flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums;line-height:1}
+.bal small{font-size:10px;color:var(--mutB);margin-top:3px}
+.bal.pln b{font-size:18px}
+.week{display:flex;gap:6px;padding:0 16px 18px}
+.wd{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0;border-radius:16px;background:var(--cardB);border:1px solid var(--lineB);position:relative}
+.wd .l{font-size:11px;color:var(--mutB);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.wd .n{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.wd .pips{display:flex;gap:2px;height:5px}
+.wd .pips i{width:5px;height:5px;border-radius:50%;background:var(--lineB)}
+.wd .pips i.on{background:var(--acc)}
+.wd.sel{background:var(--inkB);color:var(--bgB);border-color:var(--inkB)}
+.wd.sel .l{color:color-mix(in srgb,var(--bgB) 65%,transparent)}
+.wd.fut{opacity:.35}
+.dh{display:flex;justify-content:space-between;align-items:center;padding:0 20px 12px}
+.dh h2{margin:0;font-size:18px;font-weight:700}
+.pill{font-size:12px;color:var(--mutB);background:var(--cardB);border:1px solid var(--lineB);border-radius:999px;padding:4px 10px;font-variant-numeric:tabular-nums}
+.note{margin:0 16px 12px;padding:11px 14px;border-radius:14px;font-size:13px;line-height:1.45;background:var(--cardB);border:1px solid var(--lineB);color:var(--mutB)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
+.tile{position:relative;display:flex!important;flex-direction:column;gap:14px;min-height:118px;padding:14px!important;border-radius:20px;background:var(--cardB)!important;border:1px solid var(--lineB)!important}
+.tile .ic{font-size:22px;color:var(--mutB)}
+.tile b{font-size:15px;font-weight:600;line-height:1.25}
+.tile small{margin-top:auto;font-size:12px;color:var(--mutB);display:flex;align-items:center;gap:5px}
+.tile .bdg{position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;border:1.5px solid var(--lineB)}
+.tile.checked_off{border-color:color-mix(in srgb,var(--wait) 60%,transparent)!important;background:color-mix(in srgb,var(--wait) 10%,var(--cardB))!important}
+.tile.checked_off .ic,.tile.checked_off small{color:var(--wait)}
+.tile.checked_off .bdg{background:var(--wait);border-color:var(--wait);color:var(--bgB)}
+.tile.approved{border-color:color-mix(in srgb,var(--acc) 55%,transparent)!important;background:color-mix(in srgb,var(--acc) 9%,var(--cardB))!important}
+.tile.approved .ic,.tile.approved small{color:var(--accInk)}
+.tile.approved .bdg{background:var(--acc);border-color:var(--acc);color:#1A1405}
+
+/* ---------- shared contract parts ---------- */
+.sec{margin:26px 16px 0;display:flex;flex-direction:column;gap:12px}
+.sec>h2{margin:0 4px;font-size:18px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline}
+.sec>h2 small{font-size:12px;font-weight:500;color:var(--mutB)}
+.rule div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rule b{font-size:14px;font-weight:600}
+.rule p{margin:0;font-size:13px;line-height:1.45;color:var(--mutB)}
+.rule p strong{color:var(--inkB);font-weight:600}
+.stand{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stand .big{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.stand .big b{font-size:30px;font-weight:800;color:var(--accInk);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+/* ---------- B: own screen ---------- */
+.page{position:absolute;inset:0;min-height:100%;z-index:10;animation:slide .22s ease-out}
+@keyframes slide{from{transform:translateX(30px);opacity:0}to{transform:none;opacity:1}}
+.pghead{display:flex;align-items:center;gap:12px;padding:4px 16px 8px}
+.pghead h1{margin:0;font-size:18px;font-weight:700}
+.card{background:var(--cardB);border:1px solid var(--lineB);border-radius:20px;padding:16px}
+.kv{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:14px;background:var(--card2B)}
+.kv small{font-size:11px;color:var(--mutB);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.kv b{font-size:16px;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:4px}
+.kv em{font-style:normal;font-size:12px;color:var(--mutB);font-weight:500}
+
+/* ---------- past weeks: shared ---------- */
+.wd{cursor:pointer;background:var(--cardB)!important;border:1px solid var(--lineB)!important}
+.wd.sel{background:var(--inkB)!important;border-color:var(--inkB)!important}
+.wd:disabled{cursor:default}
+.wd .pips i.no{background:color-mix(in srgb,var(--mutB) 55%,transparent)}
+.wd.off{opacity:.55}
+.tile.rejected b{text-decoration:line-through;color:var(--mutB)}
+.tile.rejected{opacity:.75}
+.tile.rejected .ic{opacity:.6}
+.tile.off{opacity:.45}
+.tile[disabled]{cursor:default}
+.dh h2 small{font-size:13px;font-weight:500;color:var(--mutB);margin-left:6px}
+.note.ok{color:var(--inkB)}
+.note.past{display:flex;gap:10px;align-items:center}
+.note.past .i{font-size:16px;flex:none}
+.wsum{margin:18px 16px 0;display:flex;flex-direction:column;gap:12px}
+.wsum .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.wsum .top h3{margin:0;font-size:15px;font-weight:700}
+.wsum .top b{font-size:22px;font-weight:800;color:var(--accInk);display:flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums}
+.wsum .kvs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wsum p{margin:0;font-size:13px;color:var(--mutB);line-height:1.45}
+.soonB{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--wait);border:1px solid color-mix(in srgb,var(--wait) 50%,transparent);border-radius:6px;padding:1px 5px;margin-left:6px;vertical-align:1px}
+
+/* ---------- A: arrows on the strip ---------- */
+.wbar{display:flex;align-items:center;gap:8px;padding:0 16px 10px}
+.wbar .t{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center}
+.wbar .t b{font-size:15px;font-weight:700}
+.wbar .t small{font-size:12px;color:var(--mutB);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.arrow{width:36px;height:36px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;font-size:17px;flex:none}
+.arrow:disabled{opacity:.3;cursor:default}
+.tback{position:absolute;left:50%;transform:translateX(-50%);bottom:18px;z-index:5;display:flex!important;align-items:center;gap:6px;padding:10px 16px!important;border-radius:999px;background:var(--inkB)!important;color:var(--bgB);font-weight:600;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.35);white-space:nowrap}
+.sticky{position:sticky;bottom:18px;height:0;z-index:5}
+.sticky .tback{bottom:0}
+.swipe{touch-action:pan-y}
+
+/* ---------- B: past weeks page ---------- */
+.grp{margin:14px 16px 0;display:flex;flex-direction:column;gap:8px}
+.grp>h2{margin:6px 4px 0;font-size:13px;font-weight:600;color:var(--mutB);display:flex;justify-content:space-between;gap:8px}
+.grp>h2 b{color:var(--inkB);font-weight:700}
+.wrow{display:flex!important;align-items:center;gap:12px;width:100%;padding:12px 14px!important;border-radius:16px;background:var(--cardB)!important;border:1px solid var(--lineB)!important}
+.wrow .d{width:86px;flex:none;display:flex;flex-direction:column}
+.wrow .d b{font-size:14px;font-weight:600}
+.wrow .d small{font-size:11px;color:var(--mutB)}
+.bars5{flex:1;display:flex;gap:4px;align-items:flex-end;height:26px}
+.bars5 i{flex:1;border-radius:4px;background:var(--lineB);position:relative;height:100%;overflow:hidden}
+.bars5 i::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(var(--f)*100%);background:var(--acc)}
+.bars5 i.fut{background:transparent;border:1px dashed var(--lineB)}
+.wrow .s{width:58px;flex:none;text-align:right;display:flex;flex-direction:column;align-items:flex-end}
+.wrow .s b{font-size:15px;font-weight:700;color:var(--accInk);display:flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums}
+.wrow .s small{font-size:11px;color:var(--mutB)}
+.wrow.gap{justify-content:center;color:var(--mutB);font-size:13px;border-style:dashed!important;background:transparent!important}
+.wrow .chev{color:var(--mutB);font-size:16px}
+
+/* ---------- C: calendar sheet ---------- */
+.wlabel{margin:0 16px 10px;display:flex!important;align-items:center;gap:8px;padding:8px 12px!important;border-radius:12px;background:var(--cardB)!important;border:1px solid var(--lineB)!important;font-size:13px;font-weight:600;width:calc(100% - 32px)}
+.wlabel .i:first-child{color:var(--accInk);font-size:16px}
+.wlabel span{flex:1}
+.wlabel em{font-style:normal;color:var(--mutB);font-weight:500}
+.shade{position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.5);animation:fade .2s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:21;background:var(--bgB);border-top:1px solid var(--lineB);border-radius:26px 26px 0 0;padding:10px 16px 26px;animation:up .22s ease-out;display:flex;flex-direction:column;gap:12px}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--lineB);margin:0 auto 4px}
+.mnav{display:flex;align-items:center;gap:8px}
+.mnav b{flex:1;text-align:center;font-size:16px}
+.cal{display:grid;grid-template-columns:repeat(5,1fr) 52px;gap:6px}
+.cal .h{font-size:11px;color:var(--mutB);font-weight:600;text-transform:uppercase;letter-spacing:.06em;text-align:center}
+.cal .h:last-child{text-align:right}
+.cd{aspect-ratio:1/1.05;border-radius:12px;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--cardB)!important;border:1px solid var(--lineB)!important;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;position:relative}
+.cd .ring{width:22px;height:22px;border-radius:50%;background:conic-gradient(var(--acc) calc(var(--f)*100%),var(--lineB) 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))}
+.cd .n{position:absolute;inset:0;display:grid;place-items:center;font-size:10px}
+.cd{justify-content:center}
+.cd .dn{font-size:13px}
+.cd.other{opacity:.35}
+.cd.off{background:transparent!important;border-style:dashed!important;color:var(--mutB)}
+.cd.off .ring{visibility:hidden}
+.cd.fut{opacity:.25;cursor:default}
+.cd.sel{outline:2px solid var(--inkB);outline-offset:1px}
+.cd.today::after{content:"";position:absolute;bottom:4px;width:4px;height:4px;border-radius:50%;background:var(--inkB)}
+.cal .wt{display:flex;align-items:center;justify-content:flex-end;gap:3px;font-size:13px;font-weight:700;color:var(--accInk);font-variant-numeric:tabular-nums}
+.cal .wt.none{color:var(--mutB);font-weight:500;font-size:11px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--mutB)}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:4px;display:inline-block}
+.mctx{font-size:12px;color:var(--mutB);text-align:center;margin-top:-6px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <div class="side">
+    <h1>How does a teen look back at past weeks?</h1>
+    <p>Three ways to browse earlier weeks from the Midnight Today screen (#30). Each goes back as far as there's history and stops at this week. Past days are read-only, except yesterday until 22:00, same as now.</p>
+    <div class="ctl">
+      <div class="ctl-row"><span>Layout</span><div class="seg" id="varSeg"></div></div>
+      <div class="ctl-row"><span>Theme</span><div class="seg" id="themeSeg"></div><button class="reset" id="reset">Reset</button></div>
+    </div>
+    <div class="about" id="about"></div>
+    <div class="about"><h2>Same in all three</h2><ul>
+      <li><b>No looking ahead:</b> the strip's future days stay locked and you can't go past this week.</li>
+      <li><b>Summer (no Contract):</b> those weeks still show, with a note that nothing counted then.</li>
+      <li><b>Last Contract:</b> its weeks say they were paid out on 26 June.</li>
+      <li><b>Week total</b> under the Tasks: gwiazdki from Tasks, plus a Weekly bonus slot that fills in once #29 lets your parent grant it.</li>
+      <li>A past Task you didn't do reads <b>Not done</b> (today it says "Not done yet").</li>
+    </ul></div>
+  </div>
+  <div class="phone-col">
+    <div class="phone"><div class="screen" id="screen"></div></div>
+    <p class="hint">Sample data: Kuba on Wednesday 30 September, 3 Tasks. This Contract started Tuesday 1 September; the last one ran 4 May to 26 June and was paid out. No Contract over the summer.</p>
+  </div>
+</div>
+
+<div class="switcher" role="group" aria-label="Layout switcher">
+  <button id="prev" aria-label="Previous layout">←</button>
+  <div class="lbl" id="lbl"></div>
+  <button id="next" aria-label="Next layout">→</button>
+</div>
+
+<script>
+const VARS = {
+  A:{name:"Arrows on the strip", about:[
+    "Arrows beside a week label step back and forward one week; <b>swiping the day strip</b> does the same.",
+    "Everything stays on the Today screen: pick a day in the strip to see its Tasks, with the week total underneath.",
+    "Away from this week, a <b>Back to today</b> button floats at the bottom.",
+    "Least to learn and least to build. The catch: reaching May means stepping through every summer week one by one."]},
+  B:{name:"Past weeks page", about:[
+    "A new header button (a clock with a back arrow) opens a <b>Past weeks</b> page. The Today screen itself doesn't change.",
+    "Weeks are listed newest first and grouped by Contract, each with five bars (one per day) and its gwiazdki. The summer shows as one line.",
+    "Tap a week to open it: the same strip, Tasks and week total, read-only.",
+    "Best overview of how weeks compare. The catch: a third button in the header, next to the Contract and look buttons."]},
+  C:{name:"Calendar sheet", about:[
+    "The week label above the strip is a button. It opens a <b>calendar</b> of School days, one month at a time, with a ring per day showing how much of it counted.",
+    "Tap any day to jump the Today screen straight there. Each row ends with that week's total.",
+    "Fastest way to reach any date, and it spots good and bad days at a glance.",
+    "The catch: you have to know the label is tappable. Pairs well with A's arrows if both are wanted."]},
+};
+const ORDER = Object.keys(VARS);
+const TODAY = "2026-09-30", YDAY = "2026-09-29", TIME = "17:40", GROSZE = 50;
+const TASKS = [
+  {id:"br",name:"Brush teeth",icon:"brush"},
+  {id:"bd",name:"Make the bed",icon:"bed"},
+  {id:"hw",name:"Homework",icon:"pencil"},
+];
+const CONTRACTS = [
+  {id:"prev", start:"2026-05-04", end:"2026-06-26", paid:"2026-06-26"},
+  {id:"cur", start:"2026-09-01", end:"2026-12-18"},
+];
+const FIRST_MON = "2026-05-04";
+const WD = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], WDL = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const ICON = {
+  brush:'<path d="M3.5 20.5L13 11"/><path d="M12 8.5l3.5 3.5 4.5-4.5-3.5-3.5z"/><path d="M15 5l-1-1M17.5 7.5l-1-1"/>',
+  bed:'<path d="M3 19V6"/><path d="M3 15h18v4"/><path d="M21 15v-2.5A2.5 2.5 0 0018.5 10H11v5"/><circle cx="7" cy="12" r="1.8"/>',
+  pencil:'<path d="M4 20l1.2-4.2L16.5 4.5a2.1 2.1 0 013 3L8.2 18.8z"/><path d="M14.5 6.5l3 3"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  clock:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 2"/>',
+  x:'<path d="M7 7l10 10M17 7L7 17"/>',
+  gear:'<path d="M12.2 2h-.4a2 2 0 00-2 2v.2a2 2 0 01-1 1.7l-.4.3a2 2 0 01-2 0l-.2-.1a2 2 0 00-2.7.7l-.2.4a2 2 0 00.7 2.7l.2.1a2 2 0 011 1.7v.5a2 2 0 01-1 1.8l-.2.1a2 2 0 00-.7 2.7l.2.4a2 2 0 002.7.7l.2-.1a2 2 0 012 0l.4.3a2 2 0 011 1.7v.2a2 2 0 002 2h.4a2 2 0 002-2v-.2a2 2 0 011-1.7l.4-.3a2 2 0 012 0l.2.1a2 2 0 002.7-.7l.2-.4a2 2 0 00-.7-2.7l-.2-.1a2 2 0 01-1-1.8v-.5a2 2 0 011-1.7l.2-.1a2 2 0 00.7-2.7l-.2-.4a2 2 0 00-2.7-.7l-.2.1a2 2 0 01-2 0l-.4-.3a2 2 0 01-1-1.7V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  doc:'<path d="M15 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7z"/><path d="M14 2v5h5"/><path d="M8 13h8M8 17h5"/>',
+  back:'<path d="M19 12H5M12 19l-7-7 7-7"/>',
+  cal:'<rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 10h18"/>',
+  hist:'<path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+  l:'<path d="M15 18l-6-6 6-6"/>',
+  r:'<path d="M9 18l6-6-6-6"/>',
+  down:'<path d="M6 9l6 6 6-6"/>',
+  lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>',
+  wallet:'<path d="M19 7V4a1 1 0 00-1-1H5a2 2 0 000 4h15a1 1 0 011 1v4h-3a2 2 0 000 4h3a1 1 0 001-1v-2a1 1 0 00-1-1"/><path d="M3 5v14a2 2 0 002 2h15a1 1 0 001-1v-4"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  undo:'<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 010 11H11"/>',
+};
+const svg = k => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+const star = () => `<svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="currentColor"/></svg>`;
+const wdIdx = d => (new Date(d+"T00:00:00Z").getUTCDay()+6)%7;
+const dnum = d => Number(d.slice(8,10));
+const mon3 = d => MON[Number(d.slice(5,7))-1].slice(0,3);
+const dm = d => `${dnum(d)} ${mon3(d)}`;
+const dmLong = d => `${dnum(d)} ${MON[Number(d.slice(5,7))-1]}`;
+const addDays = (d,n) => { const x = new Date(d+"T00:00:00Z"); x.setUTCDate(x.getUTCDate()+n); return x.toISOString().slice(0,10); };
+const monday = d => addDays(d, -wdIdx(d));
+const range = m => { const f = addDays(m,4); return m.slice(5,7)===f.slice(5,7) ? `${dnum(m)}–${dnum(f)} ${mon3(f)}` : `${dm(m)} – ${dm(f)}`; };
+const starsWord = n => n===1 ? "gwiazdka" : ([2,3,4].includes(n%10) && ![12,13,14].includes(n%100)) ? "gwiazdki" : "gwiazdek";
+const pln = gr => (gr/100).toFixed(2).replace(".",",")+" zł";
+const CUR_MON = monday(TODAY);
+const WEEKS = []; for (let m = FIRST_MON; m <= CUR_MON; m = addDays(m,7)) WEEKS.push(m);
+const weekDays = m => [0,1,2,3,4].map(i=>addDays(m,i));
+const contractOn = d => CONTRACTS.find(c => c.start <= d && d <= c.end) || null;
+const weekContract = m => weekDays(m).map(contractOn).find(Boolean) || null;
+
+/* ---------- made-up history ---------- */
+const hash = s => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h>>>0)%1000)/1000; };
+const RECENT = {
+  [TODAY]:{br:"checked_off", bd:"not_done", hw:"not_done"},
+  [YDAY]:{br:"approved", bd:"checked_off", hw:"not_done"},
+  "2026-09-25":{br:"approved", bd:"approved", hw:"rejected"},
+};
+function baseState(t, d){
+  if (d > TODAY || !contractOn(d)) return "not_done";
+  if (RECENT[d]) return RECENT[d][t];
+  const r = hash(t+d);
+  if (d === "2026-09-17" && t === "bd") return "checked_off"; // an old Check-off the parent never decided
+  return r < .74 ? "approved" : r < .84 ? "rejected" : "not_done";
+}
+function bonus(m){
+  const c = weekContract(m);
+  if (!c || m >= CUR_MON) return null;
+  return [0,2,3,1,3,2,0,3][Math.floor(hash("b"+m)*8)];
+}
+
+let st;
+function fresh(){ return {v:st?.v||"A", theme:st?.theme||"dark", pln:false, week:CUR_MON, day:TODAY, page:null, sheet:false, calM:TODAY.slice(0,7), tasks:{}}; }
+st = fresh();
+const state = (t,d) => st.tasks[t+d] ?? baseState(t,d);
+const canChange = (t,d) => (d===TODAY || d===YDAY) && contractOn(d) && !["approved","rejected"].includes(state(t,d));
+const dayStars = d => contractOn(d) ? TASKS.filter(t=>state(t.id,d)==="approved").length : 0;
+function weekStats(m){
+  const days = weekDays(m).filter(d => d <= TODAY && contractOn(d));
+  const fromTasks = days.reduce((n,d)=>n+dayStars(d),0), max = days.length*TASKS.length;
+  const b = bonus(m);
+  return {fromTasks, max, bonus:b, total:fromTasks+(b||0), c:weekContract(m), inContract:days.length};
+}
+const contractStars = c => WEEKS.filter(m=>weekContract(m)===c).reduce((n,m)=>n+weekStats(m).total,0);
+const weekTitle = m => m===CUR_MON ? "This week" : m===addDays(CUR_MON,-7) ? "Last week" : range(m);
+function weekCtx(m){
+  const c = weekContract(m);
+  if (!c) return "No Contract";
+  if (c.paid) return `Paid out ${dmLong(c.paid)}`;
+  return m===CUR_MON || m===addDays(CUR_MON,-7) ? range(m) : "This Contract";
+}
+function setWeek(m, keepIdx=true){
+  st.week = m;
+  if (m===CUR_MON) { st.day = TODAY; return; }
+  const idx = keepIdx ? Math.min(wdIdx(st.day),4) : 4;
+  st.day = weekDays(m)[idx];
+}
+
+/* ---------- pieces ---------- */
+function header(extra=""){
+  const c = contractOn(TODAY), stars = contractStars(c), p = dayStars(TODAY)/TASKS.length*100;
+  const bal = `<button class="bal ${st.pln?"pln":""}" style="--p:${p}" data-act="bal" aria-label="Show ${st.pln?"gwiazdki":"money"}">
+    ${st.pln?`<b>${pln(stars*GROSZE)}</b><small>${stars} ${starsWord(stars)}</small>`:`<b>${star()}${stars}</b><small>${starsWord(stars)}</small>`}</button>`;
+  return `<header><div class="who"><small>${WDL[wdIdx(TODAY)]} ${dmLong(TODAY)}</small><h1>Hey, Kuba</h1></div>${extra}
+    <button class="hbtn" aria-label="Your Contract">${svg("doc")}</button><button class="hbtn" aria-label="Your look">${svg("gear")}</button>${bal}</header>`;
+}
+function strip(m){
+  return `<nav class="week swipe" data-swipe="1">${weekDays(m).map(d=>{
+    const fut = d > TODAY, off = !contractOn(d);
+    const pips = TASKS.map(t=>{const s = state(t.id,d); return `<i class="${!off&&!fut&&s==="approved"?"on":""}"></i>`;}).join("");
+    return `<button class="wd ${d===st.day?"sel":""} ${fut?"fut":""} ${off&&!fut?"off":""}" ${fut?"disabled":`data-day="${d}"`}>
+      <span class="l">${WD[wdIdx(d)]}</span><span class="n">${dnum(d)}</span><span class="pips">${pips}</span></button>`;}).join("")}</nav>`;
+}
+const LABEL = {not_done:"Not done yet", checked_off:"Waiting for a check", approved:"Counted", rejected:"Not counted"};
+function dayBlock(d){
+  const c = contractOn(d), locked = d < YDAY, done = TASKS.filter(t=>state(t.id,d)!=="not_done").length;
+  let note = "";
+  if (!c) note = `<div class="note past">${svg("sun")}<span>No Contract that week, so nothing counted.</span></div>`;
+  else if (c.paid) note = `<div class="note past">${svg("wallet")}<span>From your last Contract, paid out on ${dmLong(c.paid)}.</span></div>`;
+  else if (d === YDAY) note = `<div class="note">You can still change this day until 22:00 today.</div>`;
+  else if (locked) note = `<div class="note">This day can't be changed any more.</div>`;
+  const tiles = TASKS.map(t=>{
+    let s = state(t.id,d); const ch = canChange(t.id,d);
+    const off = !c;
+    const lbl = off ? "No Contract" : s==="not_done" && d<TODAY ? "Not done" : LABEL[s];
+    return `<button class="tile ${off?"off":s}" ${ch?`data-task="${t.id}"`:"disabled"}>
+      <span class="ic">${svg(t.icon)}</span><span class="bdg">${off?"":s==="approved"?svg("check"):s==="checked_off"?svg("clock"):s==="rejected"?svg("x"):""}</span>
+      <b>${t.name}</b><small>${!off&&s==="approved"?star()+" +1 · ":""}${lbl}</small></button>`;}).join("");
+  const title = d===TODAY ? "Today" : d===YDAY ? "Yesterday" : WDL[wdIdx(d)];
+  return `<div class="dh"><h2>${title}${d>=YDAY?"":`<small>${dmLong(d)}</small>`}</h2><span class="pill">${c?`${done} / ${TASKS.length} done`:"–"}</span></div>
+    ${note}<div class="grid">${tiles}</div>`;
+}
+function weekSum(m){
+  const s = weekStats(m);
+  const head = m===CUR_MON ? "This week so far" : m===addDays(CUR_MON,-7) ? "Last week" : `Week of ${dmLong(m)}`;
+  if (!s.c) return `<div class="card wsum"><div class="top"><h3>${head}</h3><b>${star()} 0</b></div><p>No Contract, so no gwiazdki this week. They only count inside a Contract.</p></div>`;
+  const bon = m===CUR_MON ? `<b>–</b><em>decided after Friday</em>` : s.bonus ? `<b>${star()} +${s.bonus}</b>` : `<b>0</b><em>not this week</em>`;
+  return `<div class="card wsum"><div class="top"><h3>${head}</h3><b>${star()} ${s.total}</b></div>
+    <div class="kvs"><div class="kv"><small>From Tasks</small><b>${star()} ${s.fromTasks}<em>of ${s.max}</em></b></div>
+    <div class="kv"><small>Weekly bonus</small>${bon}</div></div>
+    ${s.inContract<5&&m!==CUR_MON?`<p>Only ${s.inContract} of the 5 days were in a Contract.</p>`:""}</div>`;
+}
+const status = () => `<div class="status"><span>${TIME}</span><span>●●● 5G</span></div>`;
+
+/* ---------- A: arrows on the strip ---------- */
+function renderA(){
+  const m = st.week, i = WEEKS.indexOf(m);
+  const bar = `<div class="wbar"><button class="arrow" data-act="wprev" ${i===0?"disabled":""} aria-label="Previous week">${svg("l")}</button>
+    <div class="t"><b>${weekTitle(m)}</b><small>${weekCtx(m)}</small></div>
+    <button class="arrow" data-act="wnext" ${m===CUR_MON?"disabled":""} aria-label="Next week">${svg("r")}</button></div>`;
+  const back = m===CUR_MON ? "" : `<div class="sticky"><button class="tback" data-act="today">${svg("undo")} Back to today</button></div>`;
+  return header() + bar + strip(m) + dayBlock(st.day) + weekSum(m) + `<div style="height:70px"></div>` + back;
+}
+
+/* ---------- B: past weeks page ---------- */
+function wrow(m){
+  const s = weekStats(m);
+  const bars = weekDays(m).map(d => d>TODAY ? `<i class="fut"></i>` : `<i style="--f:${dayStars(d)/TASKS.length}"></i>`).join("");
+  return `<button class="wrow" data-week="${m}"><span class="d"><b>${weekTitle(m)}</b><small>${m===CUR_MON||m===addDays(CUR_MON,-7)?range(m):mon3(m)+" "+m.slice(0,4)}</small></span>
+    <span class="bars5">${bars}</span><span class="s"><b>${star()}${s.total}</b><small>${s.bonus?`+${s.bonus} bonus`:m===CUR_MON?"so far":"&nbsp;"}</small></span></button>`;
+}
+function renderB(){
+  const btn = `<button class="hbtn" data-act="list" aria-label="Past weeks">${svg("hist")}</button>`;
+  let out = header(btn) + strip(CUR_MON) + dayBlock(st.page ? TODAY : st.day) + weekSum(CUR_MON);
+  if (!st.page) return out;
+  const theme = st.theme==="light"?"light":"";
+  if (st.page === "list") {
+    const cur = CONTRACTS[1], prev = CONTRACTS[0];
+    const newest = [...WEEKS].reverse();
+    const curW = newest.filter(m=>weekContract(m)===cur), prevW = newest.filter(m=>weekContract(m)===prev), gap = newest.filter(m=>!weekContract(m));
+    const ps = contractStars(prev);
+    return out + `<div class="app page ${theme}">${status()}
+      <div class="pghead"><button class="hbtn" data-act="close" aria-label="Back">${svg("back")}</button><h1>Past weeks</h1></div>
+      <div class="grp"><h2><b>This Contract</b><span>since ${dmLong(cur.start)}</span></h2>${curW.map(wrow).join("")}</div>
+      <div class="grp"><h2><b>Summer</b><span>no Contract</span></h2><button class="wrow gap" data-week="${gap[0]}">${svg("sun")} ${dm(gap.at(-1))} – ${dm(addDays(gap[0],4))} · ${gap.length} weeks, nothing counted</button></div>
+      <div class="grp"><h2><b>Last Contract</b><span>paid out ${dm(prev.paid)} · ${pln(ps*GROSZE)}</span></h2>${prevW.map(wrow).join("")}</div>
+      <div style="height:30px"></div></div>`;
+  }
+  // one week
+  const m = st.week, i = WEEKS.indexOf(m);
+  return out + `<div class="app page ${theme}">${status()}
+    <div class="pghead"><button class="hbtn" data-act="list" aria-label="Back to past weeks">${svg("back")}</button><h1 style="flex:1">${weekTitle(m)}</h1>
+      <button class="arrow" data-act="wprev" ${i===0?"disabled":""} aria-label="Previous week">${svg("l")}</button>
+      <button class="arrow" data-act="wnext" ${m===CUR_MON?"disabled":""} aria-label="Next week">${svg("r")}</button></div>
+    <div class="note" style="margin-top:4px">${weekCtx(m)==="This Contract"?range(m):weekCtx(m)+" · "+range(m)}</div>
+    ${strip(m)}${dayBlock(st.day)}${weekSum(m)}<div style="height:30px"></div></div>`;
+}
+
+/* ---------- C: calendar sheet ---------- */
+function renderC(){
+  const m = st.week;
+  const lbl = `<button class="wlabel" data-act="sheet">${svg("cal")}<span>${weekTitle(m)} <em>· ${m===CUR_MON||m===addDays(CUR_MON,-7)?range(m):weekCtx(m)}</em></span>${svg("down")}</button>`;
+  const back = m===CUR_MON ? "" : `<div class="sticky"><button class="tback" data-act="today">${svg("undo")} Back to today</button></div>`;
+  let out = header() + lbl + strip(m) + dayBlock(st.day) + weekSum(m) + `<div style="height:70px"></div>` + back;
+  if (!st.sheet) return out;
+  const [y, mo] = st.calM.split("-").map(Number);
+  const first = `${st.calM}-01`, last = addDays(`${mo===12?y+1:y}-${String(mo===12?1:mo+1).padStart(2,"0")}-01`,-1);
+  const rows = WEEKS.filter(w => weekDays(w).some(d => d >= first && d <= last));
+  const months = [...new Set(WEEKS.flatMap(w=>weekDays(w)).filter(d=>d<=TODAY).map(d=>d.slice(0,7)))];
+  const mi = months.indexOf(st.calM);
+  const cells = rows.map(w => weekDays(w).map(d => {
+    const fut = d > TODAY, off = !contractOn(d), other = d < first || d > last;
+    const f = dayStars(d)/TASKS.length;
+    return `<button class="cd ${fut?"fut":""} ${off&&!fut?"off":""} ${other?"other":""} ${d===st.day?"sel":""} ${d===TODAY?"today":""}" ${fut?"disabled":`data-jump="${d}"`} aria-label="${dmLong(d)}">
+      <span class="dn">${dnum(d)}</span><span class="ring" style="--f:${f}"></span></button>`;}).join("")
+    + (() => { const s = weekStats(w); return s.c ? `<span class="wt">${star()}${s.total}</span>` : `<span class="wt none">none</span>`; })()).join("");
+  const c = contractOn(`${st.calM}-15`) || contractOn(first) || contractOn(last);
+  const ctx = c ? (c.paid ? `Last Contract · paid out ${dmLong(c.paid)}` : `This Contract · since ${dmLong(c.start)}`) : "No Contract this month";
+  return out + `<div class="shade" data-act="shut"></div><div class="sheet">
+    <div class="grab"></div>
+    <div class="mnav"><button class="arrow" data-act="mprev" ${mi<=0?"disabled":""} aria-label="Previous month">${svg("l")}</button>
+      <b>${MON[mo-1]} ${y}</b><button class="arrow" data-act="mnext" ${mi>=months.length-1?"disabled":""} aria-label="Next month">${svg("r")}</button></div>
+    <div class="mctx">${ctx}</div>
+    <div class="cal">${WD.slice(0,5).map(x=>`<span class="h">${x}</span>`).join("")}<span class="h">${star()}</span>${cells}</div>
+    <div class="legend"><span><i style="background:var(--acc)"></i>Ring = share of Tasks counted</span><span><i style="border:1px dashed var(--mutB)"></i>No Contract</span></div>
+  </div>`;
+}
+
+const RENDER = {A:renderA, B:renderB, C:renderC};
+function seg(el, items, cur, on){
+  el.innerHTML = items.map(([k,l])=>`<button aria-pressed="${k===cur}" data-k="${k}">${l}</button>`).join("");
+  el.onclick = e => { const b = e.target.closest("button"); if (b) on(b.dataset.k); };
+}
+let lastKey = "";
+function render(){
+  const scr = document.getElementById("screen"), top = scr.scrollTop;
+  const lock = st.v==="C" && st.sheet;
+  scr.innerHTML = `<div class="app ${st.theme==="light"?"light":""} ${lock?"lock":""}">${status()}${RENDER[st.v]()}</div>`;
+  const key = st.v+st.page+st.week;
+  scr.scrollTop = key===lastKey && !lock ? top : 0; lastKey = key;
+  const page = scr.querySelector(".page"); if (page) page.style.minHeight = scr.scrollHeight+"px";
+  const v = VARS[st.v];
+  document.getElementById("lbl").innerHTML = `${st.v} <small>(${v.name})</small>`;
+  seg(document.getElementById("varSeg"), ORDER.map(k=>[k,`${k} ${VARS[k].name}`]), st.v, k=>{st.v=k; st = {...fresh(), v:k}; render();});
+  seg(document.getElementById("themeSeg"), [["dark","Dark"],["light","Light"]], st.theme, k=>{st.theme=k; render();});
+  document.getElementById("about").innerHTML = `<h2>${st.v} · ${v.name}</h2><ul>${v.about.map(x=>`<li>${x}</li>`).join("")}</ul>
+    <p><b>Try:</b> go back to the summer and to May, open last Friday, and check off Homework yesterday.</p>`;
+}
+const scr = document.getElementById("screen");
+scr.addEventListener("click", e => {
+  const el = e.target.closest("[data-act],[data-task],[data-day],[data-week],[data-jump]");
+  if (!el || el.disabled) return;
+  const i = WEEKS.indexOf(st.week);
+  if (el.dataset.task){ const k = el.dataset.task+st.day; st.tasks[k] = state(el.dataset.task, st.day)==="not_done" ? "checked_off" : "not_done"; return render(); }
+  if (el.dataset.day){ st.day = el.dataset.day; return render(); }
+  if (el.dataset.week){ setWeek(el.dataset.week, false); st.page = "week"; return render(); }
+  if (el.dataset.jump){ st.day = el.dataset.jump; st.week = monday(st.day); st.sheet = false; return render(); }
+  const a = el.dataset.act;
+  if (a==="bal") st.pln = !st.pln;
+  if (a==="wprev" && i>0) setWeek(WEEKS[i-1]);
+  if (a==="wnext" && st.week!==CUR_MON) setWeek(WEEKS[i+1]);
+  if (a==="today") setWeek(CUR_MON);
+  if (a==="list"){ st.page = "list"; }
+  if (a==="close"){ st.page = null; st.week = CUR_MON; st.day = TODAY; }
+  if (a==="sheet"){ st.sheet = true; st.calM = st.day.slice(0,7); }
+  if (a==="shut") st.sheet = false;
+  if (a==="mprev"||a==="mnext"){ const [y,mo] = st.calM.split("-").map(Number); const d = new Date(Date.UTC(y, mo-1+(a==="mnext"?1:-1), 1)); st.calM = d.toISOString().slice(0,7); }
+  render();
+});
+// swipe on the strip: left = newer week, right = older week (A and B's week page)
+let sx = null;
+scr.addEventListener("pointerdown", e => { sx = e.target.closest("[data-swipe]") && (st.v!=="B" || st.page==="week") ? e.clientX : null; });
+scr.addEventListener("pointerup", e => {
+  if (sx === null) return; const dx = e.clientX - sx; sx = null;
+  if (Math.abs(dx) < 40) return;
+  const i = WEEKS.indexOf(st.week);
+  if (dx > 0 && i > 0) setWeek(WEEKS[i-1]);
+  else if (dx < 0 && st.week !== CUR_MON) setWeek(WEEKS[i+1]);
+  else return;
+  render();
+});
+function cycle(d){ const i = ORDER.indexOf(st.v); st = {...fresh(), v:ORDER[(i+d+ORDER.length)%ORDER.length]}; render(); }
+document.getElementById("prev").onclick = () => cycle(-1);
+document.getElementById("next").onclick = () => cycle(1);
+document.addEventListener("keydown", e => { if (e.key==="ArrowLeft") cycle(-1); if (e.key==="ArrowRight") cycle(1); });
+document.getElementById("reset").onclick = () => { st = fresh(); render(); };
+render();
+</script>
