@@ -8,7 +8,7 @@ import {
   warsawToday,
   type TaskState,
 } from "./today";
-import { mondayOf, shownDay, weekLinks } from "./weeks";
+import { canJudge, mondayOf, recapMonday, shownDay, weekLinks } from "./weeks";
 
 export type BoardTask = { id: string; name: string; icon: string; state: TaskState };
 
@@ -25,6 +25,19 @@ export type BoardDay = {
   inContract: boolean;
 };
 
+// A week's Weekly bonus as the child sees it: the Contract's size, and Grant,
+// No bonus or undecided. A paid-out Contract's undecided week got no bonus.
+export type WeekBonus = {
+  size: number;
+  granted: boolean | null;
+  // From Friday the week can be decided; perfect when every Task counted.
+  judgeable: boolean;
+  perfect: boolean;
+};
+
+// The top-of-Today recap of the week just judged.
+export type Recap = { monday: string; fromTasks: number; max: number; bonus: WeekBonus };
+
 export type Board = {
   today: string;
   // The open Contract's id, or null when there is none.
@@ -40,6 +53,10 @@ export type Board = {
   // Stars from the shown week's Tasks, out of how many it could have earned so
   // far, and how many of its School days are in a Contract.
   total: { stars: number; max: number; contractDays: number };
+  // The shown week's Weekly bonus, or null when no Contract touches it.
+  bonus: WeekBonus | null;
+  // Shown only on the current week: from Monday last week, from Friday this week.
+  recap: Recap | null;
   // The day shown under the week strip, or null for the weekend card.
   selected: { day: string; canChange: boolean; contract: DayContract; tasks: BoardTask[] } | null;
   // On a weekend: Friday, if it can still be changed, and how many of its Tasks are not done.
@@ -55,7 +72,13 @@ type TaskRow = {
   active_until: string | null;
 };
 
-type ContractRow = { id: string; starts_on: string; ends_on: string; closed_on: string | null };
+type ContractRow = {
+  id: string;
+  starts_on: string;
+  ends_on: string;
+  weekly_bonus_stars: number;
+  closed_on: string | null;
+};
 
 const activeOn = (t: TaskRow, day: string) =>
   t.active_from <= day && (t.active_until === null || day < t.active_until);
@@ -70,13 +93,17 @@ export async function loadBoard(
 ): Promise<Board> {
   const today = warsawToday(now);
 
-  const [balances, contracts, payouts, tasks] = await Promise.all([
+  const [balances, contracts, payouts, tasks, bonuses] = await Promise.all([
     supabase.from("star_balances").select("stars, grosze_per_star").eq("child_id", childId),
-    supabase.from("contracts").select("id, starts_on, ends_on, closed_on").eq("child_id", childId),
+    supabase
+      .from("contracts")
+      .select("id, starts_on, ends_on, weekly_bonus_stars, closed_on")
+      .eq("child_id", childId),
     supabase.from("payouts").select("contract_id, paid_on"),
     supabase.from("tasks").select("id, name, icon, position, active_from, active_until").eq("child_id", childId).order("position"),
+    supabase.from("weekly_bonuses").select("contract_id, week_of, granted"),
   ]);
-  for (const r of [balances, contracts, payouts, tasks]) if (r.error) throw r.error;
+  for (const r of [balances, contracts, payouts, tasks, bonuses]) if (r.error) throw r.error;
 
   // History starts with the child's earliest Contract or Task.
   const firstDay = [
@@ -87,10 +114,13 @@ export async function loadBoard(
   const shown = shownDay(requestedDay, today, firstDay);
   const week = schoolWeek(shown ?? today);
   const monday = week[0];
+  const thisWeek = monday === mondayOf(today);
+  // The current week also shows the recap, which may cover last week.
+  const from = thisWeek ? recapMonday(today) : monday;
 
   const [checkOffs, approvals] = await Promise.all([
-    supabase.from("check_offs").select("task_id, day").gte("day", week[0]).lte("day", week[4]),
-    supabase.from("approvals").select("task_id, day, approved").gte("day", week[0]).lte("day", week[4]),
+    supabase.from("check_offs").select("task_id, day").gte("day", from).lte("day", week[4]),
+    supabase.from("approvals").select("task_id, day, approved").gte("day", from).lte("day", week[4]),
   ]);
   for (const r of [checkOffs, approvals]) if (r.error) throw r.error;
 
@@ -114,19 +144,45 @@ export async function loadBoard(
         state: taskState(checked.has(`${t.id}/${day}`), decided.get(`${t.id}/${day}`)),
       }));
 
-  const weekDays: BoardDay[] = week.map((day) => {
-    const states = tasksOn(day).map((t) => t.state);
-    const inContract = contractOn(day) !== null;
+  const daysOf = (monday: string): BoardDay[] =>
+    schoolWeek(monday).map((day) => {
+      const states = tasksOn(day).map((t) => t.state);
+      const inContract = contractOn(day) !== null;
+      return {
+        day,
+        tasks: states.length,
+        stars: inContract ? states.filter((s) => s === "approved").length : 0,
+        waiting: states.includes("checked_off"),
+        future: day > today,
+        inContract,
+      };
+    });
+  // Stars from a week's Tasks, out of how many its days so far could earn.
+  const totalOf = (days: BoardDay[]) => {
+    const counted = days.filter((d) => d.inContract && !d.future);
     return {
-      day,
-      tasks: states.length,
-      stars: inContract ? states.filter((s) => s === "approved").length : 0,
-      waiting: states.includes("checked_off"),
-      future: day > today,
-      inContract,
+      stars: counted.reduce((n, d) => n + d.stars, 0),
+      max: counted.reduce((n, d) => n + d.tasks, 0),
+      contractDays: days.filter((d) => d.inContract).length,
     };
-  });
-  const counted = weekDays.filter((d) => d.inContract && !d.future);
+  };
+  // The week belongs to the latest Contract it touches.
+  const bonusOf = (monday: string, { stars, max }: { stars: number; max: number }): WeekBonus | null => {
+    const days = schoolWeek(monday).reverse();
+    const c = (contracts.data as ContractRow[]).find((c) => days.some((d) => c.starts_on <= d && d <= c.ends_on));
+    if (!c) return null;
+    const decision = bonuses.data!.find((b) => b.contract_id === c.id && b.week_of === monday);
+    const judgeable = canJudge(monday, today);
+    return {
+      size: c.weekly_bonus_stars,
+      granted: decision ? (decision.granted as boolean) : c.closed_on === null ? null : false,
+      judgeable,
+      perfect: judgeable && max > 0 && stars === max,
+    };
+  };
+
+  const weekDays = daysOf(monday);
+  const total = totalOf(weekDays);
 
   const friday = week[4];
   const openFriday =
@@ -137,6 +193,13 @@ export async function loadBoard(
   // The week's Contract: the shown day's, else the latest one the week touches.
   const weekContract = contractOn(shown ?? "") ?? [...week].reverse().map(contractOn).find((c) => c) ?? null;
 
+  const recapOf = (monday: string): Recap | null => {
+    const { stars, max } = totalOf(daysOf(monday));
+    const bonus = bonusOf(monday, { stars, max });
+    if (!bonus || !bonus.judgeable || bonus.size === 0) return null;
+    return { monday, fromTasks: stars, max, bonus };
+  };
+
   const balance = balances.data![0];
   return {
     today,
@@ -146,11 +209,9 @@ export async function loadBoard(
     contract: weekContract,
     ...weekLinks(monday, shown, today, firstDay),
     week: weekDays,
-    total: {
-      stars: counted.reduce((n, d) => n + d.stars, 0),
-      max: counted.reduce((n, d) => n + d.tasks, 0),
-      contractDays: weekDays.filter((d) => d.inContract).length,
-    },
+    total,
+    bonus: bonusOf(monday, total),
+    recap: thisWeek ? recapOf(recapMonday(today)) : null,
     selected: shown
       ? {
           day: shown,

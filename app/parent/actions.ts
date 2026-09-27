@@ -31,3 +31,16 @@ export async function approveAll(taskIds: string[], day: string) {
   revalidatePath("/", "layout");
   if (error) throw error;
 }
+
+// Grant or No bonus for one finished week of a child's open Contract, or a
+// change of an earlier decision.
+export async function decideWeeklyBonus(contractId: string, weekOf: string, granted: boolean) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("decide_weekly_bonus", {
+    p_contract_id: contractId,
+    p_week_of: weekOf,
+    p_granted: granted,
+  });
+  revalidatePath("/", "layout");
+  if (error) throw error;
+}

@@ -10,6 +10,14 @@ const monthIdx = (day: string) => Number(day.slice(5, 7)) - 1;
 
 export const mondayOf = (day: string) => schoolWeek(day)[0];
 
+// A week's Weekly bonus can be decided from its Friday.
+export const canJudge = (monday: string, today: string) => addDays(monday, 4) <= today;
+
+// The week the child's recap covers: from Friday through the weekend this
+// week, from Monday last week.
+export const recapMonday = (today: string) =>
+  isoWeekday(today) >= 5 ? mondayOf(today) : addDays(mondayOf(today), -7);
+
 // "3 June".
 export const dayMonth = (day: string) => `${dayNum(day)} ${MONTHS[monthIdx(day)]}`;
 

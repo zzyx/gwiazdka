@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { loadBoard } from "@/lib/child-board";
 import { CONTRACT_SEEN_COOKIE } from "@/lib/contract-seen";
+import { RECAP_HIDDEN_COOKIE } from "@/lib/recap";
 import { ACCENT_COOKIE, parseAccent, parseTheme, THEME_COOKIE } from "@/lib/look";
 import { createClient } from "@/lib/supabase/server";
 import type { Child } from "@/lib/viewer";
@@ -25,6 +26,7 @@ export async function ChildHome({ child, day }: { child: Child; day?: string }) 
         name={child.name}
         board={board}
         contractNew={!!board.contractId && jar.get(CONTRACT_SEEN_COOKIE)?.value !== board.contractId}
+        recapHidden={jar.get(RECAP_HIDDEN_COOKIE)?.value}
       />
     </Look>
   );
