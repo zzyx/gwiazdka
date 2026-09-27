@@ -16,6 +16,60 @@ body {
   100% { opacity: 0; transform: translateY(-34px) scale(1.2); }
 }
 
+@keyframes glow {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc) 55%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+
+/* The child's "Midnight" look. Dark first; light when chosen, or on "auto" when the phone is light. */
+.midnight {
+  --mn-bg: #0a0e1c;
+  --mn-card: #141a2e;
+  --mn-line: #252e4d;
+  --mn-ink: #eef1ff;
+  --mn-muted: #8a93b8;
+  --mn-wait: #7fa7ff;
+  /* The accent as text or outline; the light theme darkens it so it stays readable. */
+  --mn-acc-ink: var(--acc);
+  color-scheme: dark;
+  color: var(--mn-ink);
+  background:
+    radial-gradient(120% 50% at 85% -10%, color-mix(in srgb, var(--acc) 14%, transparent), transparent 60%),
+    var(--mn-bg);
+}
+.midnight[data-theme="light"] {
+  --mn-bg: #eef0f7;
+  --mn-card: #ffffff;
+  --mn-line: #dce0ee;
+  --mn-ink: #10142a;
+  --mn-muted: #5e6688;
+  --mn-wait: #3867e0;
+  --mn-acc-ink: color-mix(in oklab, var(--acc), #10142a 45%);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  .midnight[data-theme="auto"] {
+    --mn-bg: #eef0f7;
+    --mn-card: #ffffff;
+    --mn-line: #dce0ee;
+    --mn-ink: #10142a;
+    --mn-muted: #5e6688;
+    --mn-wait: #3867e0;
+    --mn-acc-ink: color-mix(in oklab, var(--acc), #10142a 45%);
+    color-scheme: light;
+  }
+}
+
+/* The balance ring: filled to --p percent in the accent. */
+.mn-ring::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  background: conic-gradient(var(--acc) calc(var(--p) * 1%), transparent 0);
+  mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }

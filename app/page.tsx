@@ -1,7 +1,18 @@
+import type { Viewport } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { parseTheme, THEME_COOKIE, themeColor } from "@/lib/look";
 import { getViewer } from "@/lib/viewer";
 import { ChildHome } from "./child/child-home";
 import { ParentHome } from "./parent/parent-home";
+
+// A child's status bar follows their Midnight theme; everyone else keeps the default.
+export async function generateViewport(): Promise<Viewport> {
+  const viewer = await getViewer();
+  if (viewer.kind !== "child") return {};
+  const jar = await cookies();
+  return { themeColor: themeColor(parseTheme(jar.get(THEME_COOKIE)?.value)) };
+}
 
 export default async function Home({ searchParams }: PageProps<"/">) {
   const viewer = await getViewer();
