@@ -1,0 +1,608 @@
+<title>Gwiazdki Photo of the Day</title>
+<!--
+  PROTOTYPE, throwaway. Answers zzyx/gwiazdka#46: where does a teen (13 to 17) add the optional
+  photo of a day, and how does the parent see it?
+  Two phones share one in-memory model: Kuba's Midnight Today screen on the left, the parent's
+  Inbox (its current look) on the right. Add a photo on the left and watch the right change.
+  Teen layouts (floating bar or ← →):
+    A  Photo card under the Tasks
+    B  Camera button in the day header
+    C  Photo on a Task (one per Task instead of one per day)
+  Parent side follows the teen layout: a thumbnail on the day card (A, B) or on the Task row (C),
+  opening full screen with Approve all at hand. "Ask for a photo" can be switched on.
+  Defaults taken: optional, never earns or blocks a Star; replace/remove in the Check-off window
+  (until 22:00 the next day); past photos visible read-only; deleted at the Contract's Payout.
+  Photos are drawn placeholders unless you pick a real file. Sample data is made up.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --bg:#EEF0F5; --panel:#FFFFFF; --ink:#1C2030; --muted:#5B6278; --line:#D9DDE7;
+  --accent:#2F5BEA; --chip:#E4E8F3; --bar:#141824; --bar-ink:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#12141B; --panel:#1C1F2A; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+    --accent:#8FA8FF; --chip:#262B3A; --bar:#F1F3F9; --bar-ink:#12141B;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#12141B; --panel:#1C1F2A; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+  --accent:#8FA8FF; --chip:#262B3A; --bar:#F1F3F9; --bar-ink:#12141B;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:Figtree,system-ui,-apple-system,sans-serif;font-size:14px;padding-inline:16px;padding-block:20px 96px;margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.intro{display:flex;flex-direction:column;gap:12px}
+.intro h1{font-size:24px;line-height:1.2;margin:0;text-wrap:balance}
+.intro p{margin:0;color:var(--muted);line-height:1.5}
+.ctl{display:flex;flex-direction:column;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ctl-row>span{width:84px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.seg{display:inline-flex;background:var(--chip);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:8px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.sw{display:inline-flex;gap:6px}
+.sw button{width:26px;height:26px;border-radius:50%;border:2px solid transparent;padding:0}
+.sw button[aria-pressed="true"]{border-color:var(--ink)}
+.reset{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 12px;font-weight:600}
+.abouts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.about{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.about h2{margin:0;font-size:15px}
+.about ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;color:var(--muted);line-height:1.45}
+.about p{margin:0;color:var(--muted);line-height:1.45}
+.about b{color:var(--ink)}
+.phones{display:flex;gap:28px;justify-content:center;flex-wrap:wrap}
+.pcol{display:flex;flex-direction:column;gap:8px;align-items:center;max-width:100%}
+.pcol>h3{margin:0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.phone{width:380px;max-width:100%;height:760px;border-radius:44px;border:10px solid #0D0F16;background:#0D0F16;overflow:hidden;position:relative;box-shadow:0 20px 50px rgba(20,24,40,.25)}
+.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;border-radius:34px}
+@media (max-width:980px){ .top{grid-template-columns:1fr} .abouts{grid-template-columns:1fr} }
+@media (max-width:480px){
+  body{padding-inline:8px}
+  .switcher .lbl small{display:none}
+  .phone{border-width:0;border-radius:18px;height:720px;box-shadow:none}
+  .screen{border-radius:18px}
+}
+.switcher{position:fixed;left:50%;transform:translateX(-50%);bottom:0;margin-bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;align-items:center;gap:4px;background:var(--bar);color:var(--bar-ink);border-radius:999px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:calc(100% - 24px)}
+.switcher button{border:0;background:transparent;color:inherit;width:40px;height:40px;border-radius:50%;font-size:18px;flex:none}
+.switcher button:hover{background:rgba(127,127,127,.25)}
+.switcher .lbl{padding:0 10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switcher .lbl small{opacity:.65;font-weight:500}
+.status{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font:600 14px Figtree,system-ui,sans-serif}
+
+/* ============ CHILD (Midnight, as shipped) ============ */
+.app{--bgB:#0A0E1C;--cardB:#141A2E;--card2B:#1B2340;--inkB:#EEF1FF;--mutB:#8A93B8;--lineB:#252E4D;--acc:#FFC54D;--accInk:var(--acc);--wait:#7FA7FF;
+  min-height:100%;padding-bottom:36px;position:relative;
+  background:radial-gradient(120% 50% at 85% -10%,color-mix(in srgb,var(--acc) 14%,transparent),transparent 60%),var(--bgB);
+  color:var(--inkB);font-family:Sora,system-ui,sans-serif;color-scheme:dark}
+.app.light{--bgB:#EEF0F7;--cardB:#FFFFFF;--card2B:#F4F5FA;--inkB:#10142A;--mutB:#5E6688;--lineB:#DCE0EE;--wait:#3867E0;--accInk:color-mix(in oklab,var(--acc),#10142A 45%);color-scheme:light}
+.app.lock{height:100%;overflow:hidden}
+.app svg.i{width:1em;height:1em;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.app svg.st{width:1em;height:1em;display:inline-block;vertical-align:-.12em;flex:none}
+.app button{border:0;background:none;padding:0;text-align:left}
+.app header{padding:6px 20px 16px;display:flex;align-items:center;gap:12px}
+.who{flex:1;min-width:0}
+.who small{display:block;font-size:12px;color:var(--mutB)}
+.who h1{margin:2px 0 0;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.hbtn{width:36px;height:36px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;color:var(--mutB);font-size:17px;position:relative;flex:none}
+.bal{display:flex!important;flex-direction:column;align-items:center;justify-content:center;width:96px;height:96px;border-radius:50%;background:var(--cardB)!important;border:1px solid var(--lineB)!important;position:relative;flex:none}
+.bal::before{content:"";position:absolute;inset:-1px;border-radius:50%;background:conic-gradient(var(--acc) calc(var(--p)*1%),transparent 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))}
+.bal b{font-size:26px;font-weight:800;color:var(--accInk);display:flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums;line-height:1}
+.bal small{font-size:10px;color:var(--mutB);margin-top:3px}
+.wbar{display:flex;align-items:center;gap:8px;padding:0 16px 10px}
+.wbar .t{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center}
+.wbar .t b{font-size:15px;font-weight:700}
+.wbar .t small{font-size:12px;color:var(--mutB)}
+.arrow{width:36px;height:36px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;font-size:17px;flex:none}
+.arrow:disabled{opacity:.3;cursor:default}
+.week{display:flex;gap:6px;padding:0 16px 18px}
+.wd{flex:1;display:flex!important;flex-direction:column;align-items:center;gap:6px;padding:10px 0!important;border-radius:16px;background:var(--cardB)!important;border:1px solid var(--lineB)!important;position:relative;cursor:pointer;text-align:center!important}
+.wd .l{font-size:11px;color:var(--mutB);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.wd .n{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;height:22px;display:grid;place-items:center}
+.wd .pips{display:flex;gap:2px;height:12px;align-items:center}
+.wd .pips i{width:5px;height:5px;border-radius:50%;background:var(--lineB)}
+.wd .pips i.on{background:var(--acc)}
+.wd.today{border-color:var(--accInk)!important}
+.wd.sel{background:var(--inkB)!important;color:var(--bgB);border-color:var(--inkB)!important}
+.wd.sel .l{color:color-mix(in srgb,var(--bgB) 60%,transparent)}
+.wd.sel .pips i:not(.on){background:color-mix(in srgb,var(--mutB) 50%,transparent)}
+.wd.fut{opacity:.35;cursor:default}
+.wd .dot{position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:var(--wait);border:2px solid var(--bgB)}
+.dh{display:flex;align-items:center;gap:10px;padding:0 20px 12px}
+.dh h2{margin:0;font-size:18px;font-weight:700;flex:1;min-width:0}
+.dh h2 small{font-size:13px;font-weight:500;color:var(--mutB);margin-left:6px}
+.pill{font-size:12px;color:var(--mutB);background:var(--cardB);border:1px solid var(--lineB);border-radius:999px;padding:4px 10px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.note{margin:0 16px 12px;padding:11px 14px;border-radius:14px;font-size:13px;line-height:1.45;background:var(--cardB);border:1px solid var(--lineB);color:var(--mutB);display:flex;gap:10px;align-items:center}
+.note.ask{border-color:color-mix(in srgb,var(--acc) 55%,transparent);background:color-mix(in srgb,var(--acc) 10%,var(--cardB));color:var(--inkB)}
+.note.ask svg{color:var(--accInk);font-size:18px}
+.note.ask .go{margin-left:auto;border-radius:10px!important;background:var(--acc)!important;color:#1A1405;font-weight:700;padding:7px 11px!important;font-size:12px;white-space:nowrap}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
+.tile{position:relative;display:flex!important;flex-direction:column;gap:14px;min-height:118px;padding:14px!important;border-radius:20px;background:var(--cardB)!important;border:1px solid var(--lineB)!important;cursor:pointer}
+.tile[data-locked]{cursor:default}
+.tile .ic{font-size:22px;color:var(--mutB)}
+.tile b{font-size:15px;font-weight:600;line-height:1.25}
+.tile small{margin-top:auto;font-size:12px;color:var(--mutB);display:flex;align-items:center;gap:5px}
+.tile .bdg{position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;border:1.5px solid var(--lineB)}
+.tile.checked_off{border-color:color-mix(in srgb,var(--wait) 60%,transparent)!important;background:color-mix(in srgb,var(--wait) 10%,var(--cardB))!important}
+.tile.checked_off .ic,.tile.checked_off small{color:var(--wait)}
+.tile.checked_off .bdg{background:var(--wait);border-color:var(--wait);color:var(--bgB)}
+.tile.approved{border-color:color-mix(in srgb,var(--acc) 55%,transparent)!important;background:color-mix(in srgb,var(--acc) 9%,var(--cardB))!important}
+.tile.approved .ic,.tile.approved small{color:var(--accInk)}
+.tile.approved .bdg{background:var(--acc);border-color:var(--acc);color:#1A1405}
+.tile.rejected b{text-decoration:line-through;color:var(--mutB)}
+.tile.rejected{opacity:.75}
+.tile.hasc small{padding-right:40px}
+.wtot{margin:20px 16px 0;padding:14px 16px;border-radius:20px;border:1px solid var(--lineB);background:var(--cardB);display:flex;justify-content:space-between;align-items:baseline}
+.wtot b{font-size:15px}
+.wtot em{font-style:normal;font-size:22px;font-weight:800;color:var(--accInk);display:flex;gap:4px;align-items:center}
+
+/* A: photo card */
+.pcard{margin:14px 16px 0;border-radius:20px;border:1.5px dashed var(--lineB)!important;background:transparent;display:flex!important;align-items:center;gap:14px;padding:16px!important;width:calc(100% - 32px);cursor:pointer}
+.pcard .cam{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--card2B);color:var(--accInk);font-size:21px;flex:none}
+.pcard div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.pcard b{font-size:15px;font-weight:600}
+.pcard small{font-size:12px;color:var(--mutB);line-height:1.4}
+.pcard.asked{border-style:solid!important;border-color:color-mix(in srgb,var(--acc) 60%,transparent)!important}
+.pfull{margin:14px 16px 0;border-radius:20px;overflow:hidden;border:1px solid var(--lineB);background:var(--cardB)}
+.pfull .img{display:block!important;width:100%;aspect-ratio:4/3;background:#000 center/cover no-repeat;position:relative}
+.pfull .bar{display:flex;align-items:center;gap:10px;padding:10px 14px}
+.pfull .bar span{flex:1;font-size:12px;color:var(--mutB);display:flex;gap:6px;align-items:center}
+.pfull .bar button{font-size:13px;font-weight:600;color:var(--accInk);padding:4px 2px!important}
+.pfull .bar button.rm{color:var(--mutB)}
+.up{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,14,28,.55);color:#fff;font:600 13px Sora,system-ui,sans-serif}
+.up i{display:block;width:60%;height:4px;border-radius:2px;background:rgba(255,255,255,.25);overflow:hidden;margin-top:8px}
+.up i::after{content:"";display:block;height:100%;width:40%;background:var(--acc);animation:load .9s ease-in-out forwards}
+@keyframes load{to{width:100%}}
+
+/* B: camera in the day header */
+.dcam{width:36px;height:36px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;color:var(--mutB);font-size:17px;flex:none;position:relative}
+.dcam.asked{border-color:var(--acc)!important;color:var(--accInk);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 22%,transparent)}
+.dthumb{width:36px;height:36px;border-radius:50%;flex:none;background-color:#000!important;background-position:center;background-size:cover;background-repeat:no-repeat;border:2px solid var(--acc)!important;position:relative}
+.dthumb .spin{position:absolute;inset:-2px;border-radius:50%;border:2px solid transparent;border-top-color:#fff;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wd .cm{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:var(--bgB);display:grid;place-items:center;font-size:10px;color:var(--mutB)}
+.wd.sel .cm{background:var(--inkB);color:var(--bgB)}
+
+/* C: photo on a Task */
+.tcam{position:absolute;right:10px;bottom:10px;width:30px;height:30px;border-radius:10px;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--card2B)!important;color:var(--mutB);font-size:15px;z-index:2}
+.tcam.asked{border-color:var(--acc)!important;color:var(--accInk)}
+.tthumb{position:absolute;right:10px;bottom:10px;width:38px;height:38px;border-radius:10px;background-color:#000!important;background-position:center;background-size:cover;background-repeat:no-repeat;border:2px solid var(--cardB)!important;box-shadow:0 0 0 1.5px var(--acc);z-index:2}
+
+/* teen: action sheet + viewer */
+.scrim{position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.45);display:flex;flex-direction:column;justify-content:flex-end;padding:10px}
+.ios{background:rgba(245,245,247,.97);border-radius:14px;overflow:hidden;font:400 17px Figtree,-apple-system,system-ui,sans-serif;color:#0A84FF;margin-bottom:8px}
+.ios button{display:flex!important;justify-content:space-between;align-items:center;width:100%;padding:14px 18px!important;border-top:1px solid rgba(0,0,0,.12)!important;text-align:left;color:#0A84FF}
+.ios button:first-child{border-top:0!important}
+.ios button small{color:#8E8E93;font-size:13px}
+.ios.cancel button{justify-content:center;font-weight:600}
+.ios .cap{padding:10px 18px;font-size:13px;color:#8E8E93;text-align:center;border-bottom:1px solid rgba(0,0,0,.12)}
+.viewer{position:absolute;inset:0;z-index:30;background:#000;display:flex;flex-direction:column;color:#fff;font-family:Sora,system-ui,sans-serif}
+.viewer .vt{display:flex;align-items:center;justify-content:space-between;padding:52px 18px 12px;font-size:13px}
+.viewer .vt b{font-size:15px;display:block}
+.viewer .vt small{opacity:.7}
+.viewer .vt button,.viewer .va button{color:#fff}
+.viewer .vimg{flex:1;background:center/contain no-repeat}
+.viewer .va{display:flex;gap:10px;padding:14px 18px 30px}
+.viewer .va button{flex:1;text-align:center!important;border-radius:14px!important;padding:13px!important;font-weight:700;background:rgba(255,255,255,.14)!important}
+.viewer .va button.pri{background:var(--acc)!important;color:#1A1405}
+.viewer .va p{margin:0;flex:1;text-align:center;font-size:12px;opacity:.7}
+.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;padding:11px 16px;border-radius:999px;background:var(--inkB);color:var(--bgB);font:600 13px Sora,system-ui,sans-serif;white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.35);animation:toast 2.6s ease forwards;display:flex;gap:8px;align-items:center}
+@keyframes toast{0%{opacity:0;transform:translate(-50%,10px)}10%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
+
+/* ============ PARENT (as shipped: Inbox by child, Figtree, white cards) ============ */
+.par{min-height:100%;background:#F6F7F9;color:#1F2430;font-family:Figtree,system-ui,sans-serif;font-size:15px;padding-bottom:30px;color-scheme:light;position:relative}
+.par.lock{height:100%;overflow:hidden}
+.par button{border:0;background:none;padding:0;text-align:left}
+.ph{display:flex;align-items:center;gap:10px;padding:4px 16px 14px}
+.ph h1{margin:0;font-size:24px;font-weight:700;flex:1}
+.ph .lnk{color:#2563EB;font-size:14px}
+.wpill{border-radius:999px;padding:4px 12px;font-size:14px;font-weight:700;background:#E5E7EB;color:#6B7280}
+.wpill.on{background:#2563EB;color:#fff}
+.kid{display:flex;flex-direction:column;gap:10px;padding:0 16px 22px}
+.kh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.kh h2{margin:0;font-size:20px;font-weight:700}
+.kh .m{font-size:14px;font-weight:600;display:flex;gap:6px;align-items:center}
+.amb{border-radius:999px;background:#FEF3C7;color:#92400E;font-weight:700;padding:2px 8px;font-size:13px}
+.pc{background:#fff;border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.06);overflow:hidden}
+.pc .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid #E5E7EB}
+.pc .hd h3{margin:0;font-size:15px;font-weight:700}
+.pc .hd p{margin:1px 0 0;font-size:12px;color:#6B7280}
+.pbtn{border-radius:8px!important;background:#2563EB!important;color:#fff;font-weight:700;padding:8px 12px!important;font-size:14px;white-space:nowrap}
+.prow{display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid #F0F1F3;font-size:14px;min-height:46px}
+.prow:first-child{border-top:0}
+.prow .e{font-size:20px}
+.prow .n{flex:1}
+.prow .ok{color:#15803D;font-weight:600}
+.prow .no{color:#B91C1C;font-weight:600}
+.prow .wt{color:#92400E;font-weight:600;font-size:13px}
+.prow .dec{display:flex;gap:6px}
+.prow .dec button{width:32px;height:32px;border-radius:8px;border:1px solid #D1D5DB!important;display:grid;place-items:center;font-weight:700}
+.prow .dec button.y{color:#15803D}
+.prow .dec button.x{color:#B91C1C}
+.muted{color:#6B7280}
+.pthumbs{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #F0F1F3}
+.pthumbs .th{width:72px;height:54px;border-radius:8px;background-color:#ddd;background-position:center;background-size:cover;background-repeat:no-repeat;flex:none}
+.pthumbs span{font-size:13px;color:#6B7280;line-height:1.35}
+.pthumbs span b{color:#1F2430;display:block;font-size:14px}
+.rth{width:34px;height:34px;border-radius:7px;background-color:#ddd;background-position:center;background-size:cover;background-repeat:no-repeat;flex:none;box-shadow:0 0 0 1px #E5E7EB}
+.askl{color:#2563EB!important;font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px}
+.asked{font-size:13px;color:#92400E;font-weight:600}
+.pbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 16px;border-bottom:1px solid #F0F1F3;font-size:13px;color:#6B7280}
+.fold{display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid #E5E7EB;font-size:14px}
+.fold:first-child{border-top:0}
+.fold .n{flex:1}
+.fold .s{color:#6B7280}
+.fold .rth{width:28px;height:28px}
+.pv{position:absolute;inset:0;z-index:30;background:#000;display:flex;flex-direction:column;color:#fff}
+.pv .vt{display:flex;align-items:center;justify-content:space-between;padding:52px 16px 12px;font-size:13px}
+.pv .vt b{display:block;font-size:15px}
+.pv .vt small{opacity:.7}
+.pv .vt button{color:#fff;font-size:15px}
+.pv .vimg{flex:1;background:center/contain no-repeat}
+.pv .strip{display:flex;gap:6px;justify-content:center;padding:10px}
+.pv .strip button{width:40px;height:40px;border-radius:6px;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:.5}
+.pv .strip button.on{opacity:1;outline:2px solid #fff}
+.pv .va{display:flex;gap:10px;padding:12px 16px 28px;align-items:center}
+.pv .va p{margin:0;flex:1;font-size:13px;opacity:.8}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div class="intro">
+      <h1>Where does a teen add the photo of a day, and how does the parent see it?</h1>
+      <p>#46. A photo is optional and never earns or blocks a gwiazdka: it's there to show a tidy room or settle a dispute. Add one on Kuba's phone (left) and look at the parent's Inbox (right). Switch Kuba's layout with the floating bar.</p>
+    </div>
+    <div class="ctl">
+      <div class="ctl-row"><span>Teen</span><div class="seg" id="vSeg"></div></div>
+      <div class="ctl-row"><span>Ask</span><div class="seg" id="askSeg"></div></div>
+      <div class="ctl-row"><span>Theme</span><div class="seg" id="themeSeg"></div></div>
+      <div class="ctl-row"><span>Accent</span><div class="sw" id="accSw"></div><button class="reset" id="reset">Reset</button></div>
+    </div>
+  </div>
+  <div class="phones">
+    <div class="pcol"><h3>Kuba (teen)</h3><div class="phone"><div class="screen" id="cscr"></div></div></div>
+    <div class="pcol"><h3>Parent</h3><div class="phone"><div class="screen" id="pscr"></div></div></div>
+  </div>
+  <div class="abouts">
+    <div class="about" id="vAbout"></div>
+    <div class="about" id="pAbout"></div>
+    <div class="about"><h2>Same in all three (defaults to confirm)</h2><ul>
+      <li><b>Optional.</b> A photo never earns, blocks or changes a gwiazdka. The parent still approves each Task.</li>
+      <li><b>Take or pick:</b> the iPhone offers Photo Library, Take Photo or Choose File. The app shrinks it to a JPEG of about 200 KB before sending.</li>
+      <li><b>Change window:</b> Kuba can replace or remove a photo until 22:00 the next day, like a Check-off. After that it's read-only, and he still sees it on past days.</li>
+      <li><b>Private:</b> only Kuba and his parent can see it. Photos are deleted when the Contract is paid out.</li>
+      <li><b>Needs a connection</b> for now; the offline queue is a separate item on the map.</li>
+    </ul></div>
+  </div>
+</div>
+
+<div class="switcher" role="group" aria-label="Teen layout switcher">
+  <button id="prev" aria-label="Previous layout">←</button>
+  <div class="lbl" id="lbl"></div>
+  <button id="next" aria-label="Next layout">→</button>
+</div>
+<input type="file" accept="image/*" id="file" hidden>
+
+<script>
+const VARS = {
+  A:{name:"Photo card", about:[
+    "A <b>“Add a photo” card under the Tasks</b>, dashed while empty. Once added, the photo fills the card with <b>Replace</b> and <b>Remove</b> under it.",
+    "The most obvious: nobody misses it, and the photo is big enough to check on Kuba's own phone.",
+    "The catch: the card is always there, and with 3 Tasks it pushes the week total further down."]},
+  B:{name:"Camera in the header", about:[
+    "A <b>camera button next to the day's title</b>. Once a photo is added, it turns into a round thumbnail; tap it to see it full screen, replace or remove it.",
+    "The quietest: Today looks as it does now, and days with a photo get a small camera mark in the week strip.",
+    "The catch: easy to overlook, so it suits “only when there's a reason” photos."]},
+  C:{name:"Photo on a Task", about:[
+    "A <b>small camera on each Task tile</b>, so a photo belongs to one Task (Tidy room, not the whole day). The parent sees it on that Task's row.",
+    "Makes the proof precise when there are several Tasks worth showing.",
+    "The catch: <b>changes the old decision</b> from one photo per day to one per Task, and adds a second tap target on every tile (a tap on the tile still checks it off)."]},
+};
+const ORDER = Object.keys(VARS);
+const ACCENTS = {gold:"#FFC54D", sky:"#7DD3FC", pink:"#F472B6", lime:"#A3E635", lavender:"#C4B5FD"};
+const TODAY = "2026-09-30", YDAY = "2026-09-29", TIME = "17:40";
+const TASKS = [
+  {id:"bd",name:"Make the bed",icon:"bed",e:"🛏️"},
+  {id:"rm",name:"Tidy room",icon:"sparkle",e:"🧹"},
+  {id:"lv",name:"Leave on time",icon:"door",e:"🚪"},
+];
+const WD = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], WDL = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const ICON = {
+  bed:'<path d="M3 19V6"/><path d="M3 15h18v4"/><path d="M21 15v-2.5A2.5 2.5 0 0018.5 10H11v5"/><circle cx="7" cy="12" r="1.8"/>',
+  sparkle:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',
+  door:'<path d="M5 21V4a1 1 0 011-1h9l4 2v16"/><path d="M3 21h18"/><circle cx="12" cy="13" r=".8"/><path d="M15 3v18"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  clock:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 2"/>',
+  x:'<path d="M7 7l10 10M17 7L7 17"/>',
+  gear:'<path d="M12.2 2h-.4a2 2 0 00-2 2v.2a2 2 0 01-1 1.7l-.4.3a2 2 0 01-2 0l-.2-.1a2 2 0 00-2.7.7l-.2.4a2 2 0 00.7 2.7l.2.1a2 2 0 011 1.7v.5a2 2 0 01-1 1.8l-.2.1a2 2 0 00-.7 2.7l.2.4a2 2 0 002.7.7l.2-.1a2 2 0 012 0l.4.3a2 2 0 011 1.7v.2a2 2 0 002 2h.4a2 2 0 002-2v-.2a2 2 0 011-1.7l.4-.3a2 2 0 012 0l.2.1a2 2 0 002.7-.7l.2-.4a2 2 0 00-.7-2.7l-.2-.1a2 2 0 01-1-1.8v-.5a2 2 0 011-1.7l.2-.1a2 2 0 00.7-2.7l-.2-.4a2 2 0 00-2.7-.7l-.2.1a2 2 0 01-2 0l-.4-.3a2 2 0 01-1-1.7V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  doc:'<path d="M15 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7z"/><path d="M14 2v5h5"/><path d="M8 13h8M8 17h5"/>',
+  cam:'<path d="M4 8h3l1.5-2.5h7L17 8h3a1 1 0 011 1v9a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z"/><circle cx="12" cy="13" r="3.5"/>',
+  l:'<path d="M15 18l-6-6 6-6"/>',
+  r:'<path d="M9 18l6-6-6-6"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>',
+};
+const STAR_D = "M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z";
+const svg = k => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+const star = () => `<svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_D}" fill="currentColor"/></svg>`;
+const wdIdx = d => (new Date(d+"T00:00:00Z").getUTCDay()+6)%7;
+const dnum = d => Number(d.slice(8,10));
+const dmLong = d => `${dnum(d)} ${MON[Number(d.slice(5,7))-1]}`;
+const addDays = (d,n) => { const x = new Date(d+"T00:00:00Z"); x.setUTCDate(x.getUTCDate()+n); return x.toISOString().slice(0,10); };
+const monday = d => addDays(d, -wdIdx(d));
+const starsWord = n => n===1 ? "gwiazdka" : ([2,3,4].includes(n%10) && ![12,13,14].includes(n%100)) ? "gwiazdki" : "gwiazdek";
+const CUR_MON = monday(TODAY), LAST_MON = addDays(CUR_MON,-7);
+const weekDays = m => [0,1,2,3,4].map(i=>addDays(m,i));
+const range = m => `${dnum(m)} – ${dmLong(addDays(m,4))}`;
+const dayName = d => d===TODAY ? "Today" : d===YDAY ? "Yesterday" : WDL[wdIdx(d)];
+const open = d => d===TODAY || d===YDAY;
+
+/* ---------- drawn sample photos (a teen's room) ---------- */
+function room(p){
+  const s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="${p.wall}"/><rect y="215" width="400" height="85" fill="${p.floor}"/>
+  <rect x="250" y="40" width="110" height="90" rx="4" fill="#CFE6FF" stroke="#fff" stroke-width="6"/><path d="M305 40v90M250 85h110" stroke="#fff" stroke-width="4"/>
+  <rect x="40" y="50" width="70" height="95" rx="3" fill="${p.poster}"/><circle cx="75" cy="90" r="18" fill="rgba(255,255,255,.55)"/>
+  <rect x="30" y="170" width="220" height="60" rx="8" fill="#8B6A4E"/><rect x="36" y="150" width="208" height="46" rx="12" fill="${p.blanket}"/>
+  <rect x="44" y="138" width="60" height="26" rx="10" fill="#F4F1EA"/>${p.mess?`<path d="M120 160c20-14 50 10 70-6 12-9 30 6 44-2" stroke="rgba(0,0,0,.25)" stroke-width="10" fill="none" stroke-linecap="round"/><rect x="280" y="238" width="40" height="18" rx="4" fill="#E26D5C" transform="rotate(-12 300 247)"/><rect x="170" y="250" width="34" height="14" rx="4" fill="#5C8DE2"/>`:""}
+  <rect x="290" y="160" width="80" height="60" rx="4" fill="#A98463"/><rect x="300" y="146" width="36" height="14" rx="3" fill="#333"/>
+  </svg>`;
+  return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(s);
+}
+const SAMPLES = [
+  room({wall:"#E8DCCB",floor:"#B99774",poster:"#6C8EBF",blanket:"#4F7A6B"}),
+  room({wall:"#D9E2EC",floor:"#9C8266",poster:"#E0A45B",blanket:"#7A5C9E"}),
+  room({wall:"#EFE3D3",floor:"#A88B6C",poster:"#C75C5C",blanket:"#3F5F8F"}),
+  room({wall:"#E3E0D6",floor:"#8E7458",poster:"#5AA37A",blanket:"#B5654A",mess:true}),
+];
+
+/* ---------- state ---------- */
+const A="approved", W="checked_off", R="rejected", N="not_done";
+const BASE = {
+  "2026-09-21":{bd:A,rm:A,lv:A}, "2026-09-22":{bd:A,rm:A,lv:A}, "2026-09-23":{bd:A,rm:R,lv:A},
+  "2026-09-24":{bd:A,rm:A,lv:A}, "2026-09-25":{bd:A,rm:A,lv:N},
+  "2026-09-28":{bd:A,rm:A,lv:A}, "2026-09-29":{bd:A,rm:W,lv:A}, "2026-09-30":{bd:W,rm:N,lv:W},
+};
+// photo keys: day (A, B) or task+day (C)
+const BASE_PHOTOS = { "2026-09-23":{src:SAMPLES[3],at:"07:31",task:"rm"}, "2026-09-29":{src:SAMPLES[1],at:"07:38",task:"rm"} };
+let st;
+function fresh(p={}){ return {v:p.v||"A", ask:p.ask||"off", theme:p.theme||"dark", acc:p.acc||"gold", week:CUR_MON, day:TODAY,
+  tasks:{}, photos:null, asked:{}, sheet:null, view:null, pview:null, uploading:null, toast:null}; }
+st = fresh();
+function photos(){
+  if (!st.photos){ st.photos = {}; for (const [d,p] of Object.entries(BASE_PHOTOS)) st.photos[st.v==="C" ? p.task+d : d] = {...p}; }
+  return st.photos;
+}
+const pkey = (d,t) => st.v==="C" ? t+d : d;
+const photo = (d,t) => photos()[pkey(d,t)];
+const dayPhotos = d => st.v==="C" ? TASKS.map(t=>photos()[t.id+d] && {...photos()[t.id+d], t}).filter(Boolean) : (photos()[d] ? [photos()[d]] : []);
+const state = (t,d) => st.tasks[t+d] ?? BASE[d]?.[t] ?? N;
+const canChange = (t,d) => open(d) && ![A,R].includes(state(t,d));
+const dayStars = d => d>TODAY ? 0 : TASKS.filter(t=>state(t.id,d)===A).length;
+const dayWaiting = d => TASKS.filter(t=>state(t.id,d)===W).length;
+const balance = () => 41 + [...weekDays(LAST_MON), ...weekDays(CUR_MON)].reduce((n,d)=>n+dayStars(d),0);
+const askedFor = (d,t) => st.ask==="on" && st.asked[pkey(d,t)] && !photo(d,t);
+
+/* ================= CHILD ================= */
+function header(){
+  const b = balance(), p = dayStars(TODAY)/TASKS.length*100;
+  return `<header><div class="who"><small>${WDL[wdIdx(TODAY)]} ${dmLong(TODAY)}</small><h1>Hey, Kuba</h1></div>
+    <button class="hbtn" aria-label="Your Contract">${svg("doc")}</button><button class="hbtn" aria-label="Your look">${svg("gear")}</button>
+    <button class="bal" style="--p:${p}"><b>${star()}${b}</b><small>${starsWord(b)}</small></button></header>`;
+}
+function weekBar(m){
+  return `<div class="wbar"><button class="arrow" data-act="wprev" ${m===LAST_MON?"disabled":""} aria-label="Previous week">${svg("l")}</button>
+    <div class="t"><b>${m===CUR_MON?"This week":"Last week"}</b><small>${range(m)}</small></div>
+    <button class="arrow" data-act="wnext" ${m===CUR_MON?"disabled":""} aria-label="Next week">${svg("r")}</button></div>`;
+}
+function strip(m){
+  return `<nav class="week">${weekDays(m).map(d=>{
+    const fut = d > TODAY, waiting = dayWaiting(d)>0;
+    const pips = TASKS.map(t=>`<i class="${!fut&&state(t.id,d)===A?"on":""}"></i>`).join("");
+    const cm = st.v==="B" && dayPhotos(d).length ? `<span class="cm">${svg("cam")}</span>` : "";
+    return `<button class="wd ${d===st.day?"sel":""} ${d===TODAY?"today":""} ${fut?"fut":""}" ${fut?"disabled":`data-day="${d}"`} aria-label="${WDL[wdIdx(d)]} ${dnum(d)}${cm?", has a photo":""}">
+      ${waiting&&!fut?`<span class="dot"></span>`:""}<span class="l">${WD[wdIdx(d)]}</span><span class="n">${dnum(d)}</span><span class="pips">${pips}</span>${cm}</button>`;}).join("")}</nav>`;
+}
+const LABEL = {not_done:"Not done yet", checked_off:"Waiting for a check", approved:"Counted", rejected:"Not counted"};
+const bg = src => `style="background-image:url('${src}')"`;
+function uploadingOver(k){ return st.uploading===k ? `<div class="up"><div style="text-align:center">Sending photo…<i></i></div></div>` : ""; }
+
+function photoCardA(d){
+  const p = photo(d), ch = open(d), asked = askedFor(d);
+  if (!p) return ch ? `<button class="pcard ${asked?"asked":""}" data-add="${d}"><span class="cam">${svg("cam")}</span><div><b>${asked?"Your parent asked for a photo":"Add a photo"}</b><small>${asked?"Take one of today, or pick one you already have.":"Optional. Show your room, or anything your parent should see."}</small></div></button>` : "";
+  return `<div class="pfull"><button class="img" ${bg(p.src)} data-view="${d}" aria-label="Open photo">${uploadingOver(d)}</button>
+    <div class="bar"><span>${svg(ch?"cam":"lock")} ${ch?`Added ${p.at}`:`Photo from ${WDL[wdIdx(d)]} ${dmLong(d)}`}</span>
+    ${ch?`<button data-add="${d}">Replace</button><button class="rm" data-rm="${d}">Remove</button>`:""}</div></div>`;
+}
+function headerCamB(d){
+  const p = photo(d), ch = open(d);
+  if (p) return `<button class="dthumb" ${bg(p.src)} data-view="${d}" aria-label="Open the day's photo">${st.uploading===d?`<span class="spin"></span>`:""}</button>`;
+  return ch ? `<button class="dcam ${askedFor(d)?"asked":""}" data-add="${d}" aria-label="Add a photo">${svg("cam")}</button>` : "";
+}
+function dayBlock(d){
+  const done = TASKS.filter(t=>state(t.id,d)!==N).length;
+  let notes = "";
+  if (st.v!=="C" && askedFor(d) && st.v==="B") notes += `<div class="note ask">${svg("cam")}<span>Your parent asked for a photo of ${d===TODAY?"today":"yesterday"}.</span><button class="go" data-add="${d}">Add</button></div>`;
+  if (st.v==="C"){ const t = TASKS.find(t=>askedFor(d,t.id)); if (t) notes += `<div class="note ask">${svg("cam")}<span>Your parent asked for a photo of <b>${t.name}</b>.</span><button class="go" data-add="${d}|${t.id}">Add</button></div>`; }
+  if (d === YDAY) notes += `<div class="note">You can still change this day until 22:00 today.</div>`;
+  else if (d < YDAY) notes += `<div class="note">This day can't be changed any more.</div>`;
+  const tiles = TASKS.map(t=>{
+    const s = state(t.id,d), ch = canChange(t.id,d);
+    const lbl = s===N && d<TODAY ? "Not done" : LABEL[s];
+    let extra = "";
+    if (st.v==="C"){
+      const p = photo(d,t.id);
+      if (p) extra = `<button class="tthumb" ${bg(p.src)} data-view="${d}|${t.id}" aria-label="Open photo of ${t.name}"></button>`;
+      else if (open(d)) extra = `<button class="tcam ${askedFor(d,t.id)?"asked":""}" data-add="${d}|${t.id}" aria-label="Add a photo of ${t.name}">${svg("cam")}</button>`;
+    }
+    return `<div class="tile ${s} ${st.v==="C"&&extra?"hasc":""}" ${ch?`data-task="${t.id}" role="button" tabindex="0"`:"data-locked"}>
+      <span class="ic">${svg(t.icon)}</span><span class="bdg">${s===A?svg("check"):s===W?svg("clock"):s===R?svg("x"):""}</span>
+      <b>${t.name}</b><small>${s===A?star()+" +1 · ":""}${lbl}</small>${extra}</div>`;}).join("");
+  const title = d===TODAY ? "Today" : d===YDAY ? "Yesterday" : WDL[wdIdx(d)];
+  return `<div class="dh"><h2>${title}${d>=YDAY?"":`<small>${dmLong(d)}</small>`}</h2>${st.v==="B"?headerCamB(d):""}<span class="pill">${done} / ${TASKS.length} done</span></div>
+    ${notes}<div class="grid">${tiles}</div>${st.v==="A"?photoCardA(d):""}`;
+}
+function weekTotal(m){
+  const n = weekDays(m).reduce((a,d)=>a+dayStars(d),0);
+  return `<div class="wtot"><b>${m===CUR_MON?"This week":"Last week"}</b><em>${star()}${n}</em></div>`;
+}
+function childOverlay(){
+  if (st.sheet){
+    const [d,t] = st.sheet.split("|"), has = photo(d,t);
+    return `<div class="scrim" data-act="shut"><div class="ios"><div class="cap">${t?TASKS.find(x=>x.id===t).name+" · ":""}${dayName(d)}</div>
+      <button data-pick="lib">Photo Library <small>sample</small></button><button data-pick="cam">Take Photo <small>sample</small></button><button data-pick="file">Choose File <small>real picker</small></button></div>
+      <div class="ios cancel"><button data-act="shut">Cancel</button></div></div>`;
+  }
+  if (st.view){
+    const [d,t] = st.view.split("|"), p = photo(d,t), ch = open(d);
+    if (!p) return "";
+    return `<div class="viewer"><div class="vt"><span><b>${t?TASKS.find(x=>x.id===t).name:dayName(d)}</b><small>${t?dayName(d)+", ":""}${WDL[wdIdx(d)]} ${dmLong(d)} · ${p.at}</small></span><button data-act="shut">Close</button></div>
+      <div class="vimg" ${bg(p.src)}></div>
+      <div class="va">${ch?`<button data-rm="${st.view}">Remove</button><button class="pri" data-add="${st.view}">Replace</button>`:`<p>Only you and your parent can see this.</p>`}</div></div>`;
+  }
+  return "";
+}
+function renderChild(){
+  const ov = childOverlay();
+  const toast = st.toast ? `<div class="toast">${svg("cam")} ${st.toast}</div>` : "";
+  return `<div class="app ${st.theme==="light"?"light":""} ${ov?"lock":""}" style="--acc:${ACCENTS[st.acc]}"><div class="status"><span>${TIME}</span><span>●●● 5G</span></div>${header()}${weekBar(st.week)}${strip(st.week)}${dayBlock(st.day)}${weekTotal(st.week)}${ov}${toast}</div>`;
+}
+
+/* ================= PARENT ================= */
+function pHead(){
+  const w = [...weekDays(LAST_MON),...weekDays(CUR_MON)].reduce((n,d)=>n+dayWaiting(d),0);
+  return `<div class="ph"><h1>Inbox</h1><button class="lnk">Contracts</button><span class="wpill ${w?"on":""}">${w} waiting</span></div>`;
+}
+function askCtl(d,t){
+  if (st.ask!=="on" || !open(d) || photo(d,t)) return "";
+  const k = pkey(d,t);
+  return st.asked[k] ? `<span class="asked">Asked</span>` : `<button class="askl" data-ask="${d}${t?"|"+t:""}" aria-label="Ask for a photo">${svg0("cam")}${st.v==="C"?"Ask":"Ask for a photo"}</button>`;
+}
+const svg0 = k => `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+function dayCard(d){
+  const w = dayWaiting(d);
+  let photoRow = "";
+  if (st.v!=="C"){
+    const p = photo(d);
+    if (p) photoRow = `<div class="pthumbs"><button class="th" ${bg(p.src)} data-pview="${d}" aria-label="Open photo"></button><span><b>Photo</b>Added ${p.at}. Tap to open.</span></div>`;
+    else if (st.ask==="on" && open(d)) photoRow = `<div class="pbar"><span>No photo${st.asked[d]?" yet":""}</span>${askCtl(d)}</div>`;
+  }
+  const rows = TASKS.map(t=>{
+    const s = state(t.id,d), p = st.v==="C" && photo(d,t.id);
+    const th = p ? `<button class="rth" ${bg(p.src)} data-pview="${d}|${t.id}" aria-label="Open photo of ${t.name}"></button>` : (st.v==="C" && st.ask==="on" && open(d) ? askCtl(d,t.id) : "");
+    const right = s===W ? `<span class="dec"><button class="y" data-dec="${d}|${t.id}|a" aria-label="Approve">✓</button><button class="x" data-dec="${d}|${t.id}|r" aria-label="Reject">✕</button></span>`
+      : s===A ? `<span class="ok">✓ ★</span>` : s===R ? `<span class="no">✕</span>` : `<span class="muted" style="font-size:13px">not done</span>`;
+    return `<div class="prow"><span class="e">${t.e}</span><span class="n" style="${s===R?"text-decoration:line-through;color:#9CA3AF":""}">${t.name}</span>${th}${right}</div>`;
+  }).join("");
+  return `<div class="pc"><div class="hd"><div><h3>${WDL[wdIdx(d)]} ${dmLong(d)}</h3><p>${w} waiting · ${dayStars(d)} ★ so far</p></div>
+    ${w?`<button class="pbtn" data-approve="${d}">Approve all (${w})</button>`:""}</div>${photoRow}${rows}</div>`;
+}
+function renderParent(){
+  const days = [...weekDays(LAST_MON),...weekDays(CUR_MON)].filter(d=>d<=TODAY);
+  const hot = days.filter(d=>dayWaiting(d)>0 || (open(d) && (dayPhotos(d).length || st.ask==="on"))).reverse();
+  const folded = days.filter(d=>!hot.includes(d)).reverse().map(d=>{
+    const ps = dayPhotos(d);
+    return `<div class="fold"><span class="n">${WD[wdIdx(d)]} ${dnum(d)} ${MON[Number(d.slice(5,7))-1].slice(0,3)}</span>${ps.length?`<button class="rth" ${bg(ps[0].src)} data-pview="${d}${ps[0].t?"|"+ps[0].t.id:""}" aria-label="Open photo"></button>`:""}<span class="s">${dayStars(d)}/${TASKS.length} ★</span></div>`;
+  }).join("");
+  const w = days.reduce((n,d)=>n+dayWaiting(d),0), b = balance();
+  let out = pHead() + `<section class="kid"><div class="kh"><h2>Kuba</h2><div class="m">${b} ★ · ${(b*0.5).toFixed(2).replace(".",",")} zł${w?`<span class="amb">${w} waiting</span>`:""}</div></div>
+    ${hot.map(dayCard).join("")}<div class="pc">${folded}</div></section>
+    <section class="kid"><div class="kh"><h2>Ola</h2><div class="m">37 ★ · 18,50 zł</div></div><div class="pc"><div class="fold"><span class="n">Nothing waiting</span></div></div></section>`;
+  return out + parentViewer();
+}
+function parentViewer(){
+  if (!st.pview) return "";
+  const [d,t] = st.pview.split("|"), list = dayPhotos(d);
+  const cur = t ? photo(d,t) : photo(d); if (!cur) return "";
+  const w = dayWaiting(d);
+  const stripHtml = st.v==="C" && list.length>1 ? `<div class="strip">${list.map(p=>`<button class="${p.t.id===t?"on":""}" ${bg(p.src)} data-pview="${d}|${p.t.id}" aria-label="${p.t.name}"></button>`).join("")}</div>` : "";
+  return `<div class="pv"><div class="vt"><span><b>Kuba · ${t?TASKS.find(x=>x.id===t).name:WDL[wdIdx(d)]}</b><small>${WDL[wdIdx(d)]} ${dmLong(d)}, ${cur.at}</small></span><button data-act="pshut">Close</button></div>
+    <div class="vimg" ${bg(cur.src)}></div>${stripHtml}
+    <div class="va"><p>${w?`${w} Task${w>1?"s":""} waiting on this day`:`Nothing waiting on this day`}</p>${w?`<button class="pbtn" data-approve="${d}">Approve all (${w})</button>`:""}</div></div>`;
+}
+
+/* ================= wiring ================= */
+function seg(el, items, cur, on){
+  el.innerHTML = items.map(([k,l])=>`<button aria-pressed="${k===cur}" data-k="${k}">${l}</button>`).join("");
+  el.onclick = e => { const b = e.target.closest("button"); if (b) on(b.dataset.k); };
+}
+function render(){
+  const ps = document.getElementById("pscr"), cs = document.getElementById("cscr");
+  const pt = ps.scrollTop, ct = cs.scrollTop;
+  cs.innerHTML = renderChild(); cs.scrollTop = cs.querySelector(".lock") ? 0 : ct;
+  ps.innerHTML = `<div class="par ${st.pview?"lock":""}"><div class="status"><span>${TIME}</span><span>●●● 5G</span></div>${renderParent()}</div>`;
+  ps.scrollTop = st.pview ? 0 : pt;
+  st.toast = null;
+  const v = VARS[st.v];
+  document.getElementById("lbl").innerHTML = `${st.v} <small>(${v.name})</small>`;
+  seg(document.getElementById("vSeg"), ORDER.map(k=>[k,`${k} ${VARS[k].name}`]), st.v, k=>switchVar(k));
+  seg(document.getElementById("askSeg"), [["off","Parent can't ask"],["on","Parent can ask for a photo"]], st.ask, k=>{st.ask=k; render();});
+  seg(document.getElementById("themeSeg"), [["dark","Dark"],["light","Light"]], st.theme, k=>{st.theme=k; render();});
+  const sw = document.getElementById("accSw");
+  sw.innerHTML = Object.entries(ACCENTS).map(([k,c])=>`<button aria-pressed="${k===st.acc}" aria-label="${k}" data-k="${k}" style="background:${c}"></button>`).join("");
+  sw.onclick = e => { const b = e.target.closest("button"); if (b){ st.acc = b.dataset.k; render(); } };
+  document.getElementById("vAbout").innerHTML = `<h2>Teen ${st.v} · ${v.name}</h2><ul>${v.about.map(x=>`<li>${x}</li>`).join("")}</ul>
+    <p><b>Try:</b> add a photo to today, open it on the parent's side, then look at last Wednesday (‹ on Kuba's week bar) for an old, read-only one.</p>`;
+  document.getElementById("pAbout").innerHTML = `<h2>Parent · follows the teen layout</h2><ul>
+    <li>${st.v==="C"?"Each photo sits as a <b>small thumbnail on its Task's row</b>, right where you approve that Task.":"The day card gets a <b>photo row</b> under its header with a thumbnail."} Tap it for full screen, with <b>Approve all</b> still at the bottom.</li>
+    <li>Days with nothing waiting stay folded; a photo shows as a tiny thumbnail on the folded row.</li>
+    <li><b>Ask for a photo</b> (switch it on above): a link on today and yesterday while Kuba can still add one. Kuba sees a highlighted note; there's no notification, same as Check-offs. It's off unless you want it.</li></ul>`;
+}
+function switchVar(k){ st.v = k; st.photos = null; st.asked = {}; st.view = null; st.pview = null; st.sheet = null; render(); }
+function setPhoto(key, src){
+  const [d,t] = key.split("|");
+  const k = st.v==="C" ? t+d : d, had = !!photos()[k];
+  photos()[k] = {src, at:TIME, task:t};
+  st.uploading = st.v==="C" ? null : d; st.sheet = null; st.view = null;
+  st.toast = had ? "Photo replaced" : "Photo sent to your parent";
+  render();
+  setTimeout(()=>{ st.uploading = null; render(); }, 900);
+}
+let pickFor = null;
+document.getElementById("file").addEventListener("change", e => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (f && pickFor) setPhoto(pickFor, URL.createObjectURL(f));
+});
+let sampleI = 0;
+document.getElementById("cscr").addEventListener("click", e => {
+  const el = e.target.closest("[data-act],[data-add],[data-rm],[data-view],[data-pick],[data-task],[data-day]");
+  if (!el || el.disabled) return;
+  const d = el.dataset;
+  if (d.act==="shut"){ if (e.target.closest(".ios") && !e.target.closest("button")) return; st.sheet = null; st.view = null; }
+  else if (d.pick){ const key = st.sheet; if (d.pick==="file"){ pickFor = key; st.sheet = null; render(); document.getElementById("file").click(); return; } setPhoto(key, SAMPLES[sampleI++ % 3]); return; }
+  else if (d.add){ st.view = null; st.sheet = d.add; }
+  else if (d.rm){ const [day,t] = d.rm.split("|"); delete photos()[st.v==="C"?t+day:day]; st.view = null; st.toast = "Photo removed"; }
+  else if (d.view){ st.view = d.view; }
+  else if (d.task){ const k = d.task+st.day; st.tasks[k] = state(d.task, st.day)===N ? W : N; }
+  else if (d.day){ st.day = d.day; }
+  else if (d.act==="wprev"){ st.week = LAST_MON; st.day = addDays(LAST_MON, 2); }
+  else if (d.act==="wnext"){ st.week = CUR_MON; st.day = TODAY; }
+  render();
+});
+document.getElementById("pscr").addEventListener("click", e => {
+  const el = e.target.closest("[data-act],[data-pview],[data-approve],[data-dec],[data-ask]");
+  if (!el) return;
+  const d = el.dataset;
+  if (d.act==="pshut") st.pview = null;
+  else if (d.pview) st.pview = d.pview;
+  else if (d.approve){ for (const t of TASKS) if (state(t.id,d.approve)===W) st.tasks[t.id+d.approve] = A; }
+  else if (d.dec){ const [day,t,v] = d.dec.split("|"); st.tasks[t+day] = v==="a" ? A : R; }
+  else if (d.ask){ const [day,t] = d.ask.split("|"); st.asked[pkey(day,t)] = true; st.week = CUR_MON; st.day = day; }
+  render();
+});
+function cycle(n){ const i = ORDER.indexOf(st.v); switchVar(ORDER[(i+n+ORDER.length)%ORDER.length]); }
+document.getElementById("prev").onclick = () => cycle(-1);
+document.getElementById("next").onclick = () => cycle(1);
+document.addEventListener("keydown", e => { if (e.target.closest("input")) return; if (e.key==="ArrowLeft") cycle(-1); if (e.key==="ArrowRight") cycle(1); });
+document.getElementById("reset").onclick = () => { st = fresh({v:st.v, ask:st.ask, theme:st.theme, acc:st.acc}); render(); };
+render();
+</script>
