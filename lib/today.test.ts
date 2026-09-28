@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canChildChange,
+  dayDone,
   formatPln,
   schoolWeek,
   starsWord,
@@ -83,5 +84,30 @@ describe("formatPln", () => {
   it("shows grosze as złoty with two decimals", () => {
     expect(formatPln(2050)).toBe("20.50 zł");
     expect(formatPln(0)).toBe("0.00 zł");
+  });
+});
+
+describe("dayDone", () => {
+  it("is full when every Task is counted", () => {
+    expect(dayDone(["approved", "approved"], true, false)).toBe("full");
+  });
+  it("is part when every Task is checked off or counted and some wait", () => {
+    expect(dayDone(["approved", "checked_off"], true, false)).toBe("part");
+    expect(dayDone(["checked_off", "checked_off"], true, false)).toBe("part");
+  });
+  it("is plain with a Not counted Task", () => {
+    expect(dayDone(["approved", "rejected"], true, false)).toBeNull();
+  });
+  it("is plain with a Task left undone", () => {
+    expect(dayDone(["approved", "checked_off", "not_done"], true, false)).toBeNull();
+  });
+  it("is plain outside a Contract", () => {
+    expect(dayDone(["approved", "approved"], false, false)).toBeNull();
+  });
+  it("is plain on a future day", () => {
+    expect(dayDone(["checked_off"], true, true)).toBeNull();
+  });
+  it("is plain on a day with no Tasks", () => {
+    expect(dayDone([], true, false)).toBeNull();
   });
 });
