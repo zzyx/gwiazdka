@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import type { InboxDay, InboxRow } from "@/lib/inbox";
 import { loadInbox, type ChildSection } from "@/lib/parent-inbox";
@@ -9,6 +10,7 @@ import { approveAll, decide } from "./actions";
 import { PhotoRow } from "./day-photo";
 import { figtree } from "./font";
 import { JoinCodeButton } from "./join-code-button";
+import { JoinQr } from "./join-qr";
 import { AllWeeks, WeekCards } from "./week-bonus";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -22,6 +24,8 @@ export async function ParentHome() {
   const sections = await loadInbox(supabase, now);
   const today = warsawToday(now);
   const waiting = sections.reduce((sum, s) => sum + (s.inbox?.waiting ?? 0), 0);
+  const joinUrl = await joinPageUrl();
+  const qr = <JoinQr url={joinUrl} />;
 
   return (
     <main className={`${figtree.className} mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 bg-[#F6F7F9] p-4 pt-[max(1rem,env(safe-area-inset-top))] text-[#1F2430]`}>
@@ -38,7 +42,7 @@ export async function ParentHome() {
         </span>
       </header>
       {sections.map((s) => (
-        <ChildInboxSection key={s.id} section={s} today={today} />
+        <ChildInboxSection key={s.id} section={s} today={today} joinUrl={joinUrl} qr={qr} />
       ))}
       <form action={signOut} className="mt-auto">
         <button className="text-sm text-[#6B7280] underline">Sign out</button>
@@ -47,7 +51,24 @@ export async function ParentHome() {
   );
 }
 
-function ChildInboxSection({ section, today }: { section: ChildSection; today: string }) {
+// The join page on the address the parent is using, e.g. https://gwiazdka.vercel.app/join.
+async function joinPageUrl() {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  return `${h.get("x-forwarded-proto") ?? "https"}://${host}/join`;
+}
+
+function ChildInboxSection({
+  section,
+  today,
+  joinUrl,
+  qr,
+}: {
+  section: ChildSection;
+  today: string;
+  joinUrl: string;
+  qr: React.ReactNode;
+}) {
   const { inbox, contractId } = section;
   const bonus = inbox && contractId && inbox.weeklyBonus > 0 ? { contractId, size: inbox.weeklyBonus, today } : null;
   return (
@@ -87,7 +108,7 @@ function ChildInboxSection({ section, today }: { section: ChildSection; today: s
         </>
       )}
       <HistoryLink section={section} />
-      <JoinCodeButton childId={section.id} />
+      <JoinCodeButton childId={section.id} name={section.name} joinUrl={joinUrl} qr={qr} />
     </section>
   );
 }
