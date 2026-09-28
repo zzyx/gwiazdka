@@ -45,7 +45,7 @@ export async function loadInbox(supabase: SupabaseClient, now: Date): Promise<Ch
     return {
       ...child,
       contractId: contract.id,
-      inbox: { ...inbox, waitingDays: inbox.waitingDays.map(withPhoto), otherDays: inbox.otherDays.map(withPhoto) },
+      inbox: { ...inbox, waitingDays: inbox.waitingDays.map(withPhoto) },
     };
   });
 }

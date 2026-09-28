@@ -39,19 +39,18 @@ export function PhotoRow(props: Props) {
   );
 }
 
-// The tiny thumbnail on a folded day's row.
-export function PhotoThumb(props: Props) {
+// The tiny thumbnail on a History day.
+export function PhotoThumb({ className = "", ...props }: Props & { className?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button
         onClick={(e) => {
-          // Inside the folded day's summary: open the photo, not the day.
           e.preventDefault();
           setOpen(true);
         }}
         aria-label="Open photo"
-        className="ml-auto mr-3"
+        className={className}
       >
         <Thumb url={props.photo.url} className="size-7 rounded-md" />
       </button>

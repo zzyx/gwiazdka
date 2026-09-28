@@ -6,7 +6,16 @@ import { canJudge, mondayOf } from "./weeks";
 
 export type InboxRow = { taskId: string; name: string; icon: string; state: TaskState };
 
-export type InboxDay = { day: string; rows: InboxRow[]; waiting: number; stars: number; photo?: DayPhoto };
+export type InboxDay = {
+  day: string;
+  rows: InboxRow[];
+  waiting: number;
+  stars: number;
+  // A past day with nothing checked off or decided, as when a Contract started
+  // before the parent set it up.
+  empty: boolean;
+  photo?: DayPhoto;
+};
 
 // One week of the Contract as the parent judges it for the Weekly bonus.
 export type InboxWeek = {
@@ -34,23 +43,53 @@ export type ChildInbox = {
   waiting: number;
   // Days with Check-offs waiting, newest first; shown as cards.
   waitingDays: InboxDay[];
-  // Every other School day of the Contract up to today, newest first; folded.
-  otherDays: InboxDay[];
+  // The Contract's empty days, oldest first; filled in from the History.
+  emptyDays: string[];
   // Every week of the Contract up to this one, newest first.
   weeks: InboxWeek[];
 };
 
+export type TaskRow = {
+  id: string;
+  name: string;
+  icon: string;
+  position: number;
+  active_from: string;
+  active_until: string | null;
+};
+
+export const isActive = (t: TaskRow, day: string) =>
+  t.active_from <= day && (t.active_until === null || day < t.active_until);
+
+// One School day of a child: every Task active that day, in order, with its state.
+export function buildDay(
+  day: string,
+  today: string,
+  ordered: TaskRow[],
+  checked: Set<string>,
+  decided: Map<string, boolean>,
+): InboxDay {
+  const rows = ordered
+    .filter((t) => isActive(t, day))
+    .map((t) => ({
+      taskId: t.id,
+      name: t.name,
+      icon: t.icon,
+      state: taskState(checked.has(`${t.id}/${day}`), decided.get(`${t.id}/${day}`)),
+    }));
+  return {
+    day,
+    rows,
+    waiting: rows.filter((r) => r.state === "checked_off").length,
+    stars: rows.filter((r) => r.state === "approved").length,
+    empty: day < today && rows.length > 0 && rows.every((r) => r.state === "not_done"),
+  };
+}
+
 type Input = {
   today: string;
   contract: { starts_on: string; ends_on: string; grosze_per_star: number; weekly_bonus_stars: number };
-  tasks: {
-    id: string;
-    name: string;
-    icon: string;
-    position: number;
-    active_from: string;
-    active_until: string | null;
-  }[];
+  tasks: TaskRow[];
   checkOffs: { task_id: string; day: string }[];
   approvals: { task_id: string; day: string; approved: boolean }[];
   // The Contract's Weekly bonus decisions.
@@ -65,21 +104,7 @@ export function buildChildInbox({ today, contract, tasks, checkOffs, approvals, 
   const days: InboxDay[] = [];
   const last = contract.ends_on < today ? contract.ends_on : today;
   for (let day = last; day >= contract.starts_on; day = addDays(day, -1)) {
-    if (!isSchoolDay(day)) continue;
-    const rows = ordered
-      .filter((t) => t.active_from <= day && (t.active_until === null || day < t.active_until))
-      .map((t) => ({
-        taskId: t.id,
-        name: t.name,
-        icon: t.icon,
-        state: taskState(checked.has(`${t.id}/${day}`), decided.get(`${t.id}/${day}`)),
-      }));
-    days.push({
-      day,
-      rows,
-      waiting: rows.filter((r) => r.state === "checked_off").length,
-      stars: rows.filter((r) => r.state === "approved").length,
-    });
+    if (isSchoolDay(day)) days.push(buildDay(day, today, ordered, checked, decided));
   }
 
   const byDay = new Map(days.map((d) => [d.day, d]));
@@ -113,7 +138,7 @@ export function buildChildInbox({ today, contract, tasks, checkOffs, approvals, 
     groszePerStar: contract.grosze_per_star,
     waiting: days.reduce((sum, d) => sum + d.waiting, 0),
     waitingDays: days.filter((d) => d.waiting > 0),
-    otherDays: days.filter((d) => d.waiting === 0),
+    emptyDays: days.filter((d) => d.empty).map((d) => d.day).reverse(),
     weeks,
   };
 }

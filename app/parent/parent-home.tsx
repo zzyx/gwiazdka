@@ -6,7 +6,7 @@ import { taskEmoji } from "@/lib/task-icons";
 import { formatPln, warsawToday } from "@/lib/today";
 import { signOut } from "../sign-in/actions";
 import { approveAll, decide } from "./actions";
-import { PhotoRow, PhotoThumb } from "./day-photo";
+import { PhotoRow } from "./day-photo";
 import { figtree } from "./font";
 import { JoinCodeButton } from "./join-code-button";
 import { AllWeeks, WeekCards } from "./week-bonus";
@@ -14,9 +14,6 @@ import { AllWeeks, WeekCards } from "./week-bonus";
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const dayLabel = (day: string) =>
   `${WEEKDAYS[(new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7]} ${day.slice(8, 10)}.${day.slice(5, 7)}`;
-
-// Folded days shown before "Earlier days": about the last two weeks.
-const RECENT_DAYS = 10;
 
 // The parent's "Inbox by child".
 export async function ParentHome() {
@@ -86,46 +83,33 @@ function ChildInboxSection({ section, today }: { section: ChildSection; today: s
           {inbox.waitingDays.map((d) => (
             <DayCard key={d.day} day={d} childName={section.name} />
           ))}
-          {inbox.otherDays.length > 0 && (
-            <div className="flex flex-col divide-y divide-[#E5E7EB] rounded-xl bg-white">
-              {inbox.otherDays.slice(0, RECENT_DAYS).map((d) => (
-                <FoldedDay key={d.day} day={d} childName={section.name} />
-              ))}
-              {inbox.otherDays.length > RECENT_DAYS && (
-                <details>
-                  <summary className="cursor-pointer list-none px-4 py-2.5 text-sm text-[#2563EB]">
-                    Earlier days ({inbox.otherDays.length - RECENT_DAYS})
-                  </summary>
-                  <div className="flex flex-col divide-y divide-[#E5E7EB] border-t border-[#E5E7EB]">
-                    {inbox.otherDays.slice(RECENT_DAYS).map((d) => (
-                      <FoldedDay key={d.day} day={d} childName={section.name} />
-                    ))}
-                  </div>
-                </details>
-              )}
-            </div>
-          )}
           {bonus && <AllWeeks weeks={inbox.weeks} {...bonus} />}
         </>
       )}
+      <HistoryLink section={section} />
       <JoinCodeButton childId={section.id} />
     </section>
   );
 }
 
-// A day with nothing waiting, folded to one line; tapping it opens its Tasks.
-function FoldedDay({ day, childName }: { day: InboxDay; childName: string }) {
+// Every School day, past Contracts too, lives in the History; the badge counts
+// the open Contract's days with nothing checked off or decided.
+function HistoryLink({ section }: { section: ChildSection }) {
+  const empty = section.inbox?.emptyDays.length ?? 0;
   return (
-    <details>
-      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 text-sm">
-        <span>{dayLabel(day.day)}</span>
-        {day.photo && <PhotoThumb childName={childName} day={day.day} photo={day.photo} waitingIds={[]} />}
-        <span className="text-[#6B7280]">
-          {day.stars}/{day.rows.length} ★
-        </span>
-      </summary>
-      <DayRows day={day} />
-    </details>
+    <Link
+      href={`/history?child=${encodeURIComponent(section.id)}`}
+      className="flex items-center gap-2.5 rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm"
+    >
+      <span aria-hidden>📅</span>
+      <span className="flex-1">History</span>
+      {empty > 0 && (
+        <span className="rounded-full bg-[#FEF3C7] px-2 py-0.5 text-xs text-[#92400E]">{empty} empty</span>
+      )}
+      <span className="text-[#6B7280]" aria-hidden>
+        ›
+      </span>
+    </Link>
   );
 }
 

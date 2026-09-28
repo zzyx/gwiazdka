@@ -55,9 +55,6 @@ describe("buildChildInbox", () => {
     expect(inbox.waitingDays[0].rows.map((r) => r.taskId)).toEqual(["teeth", "bag", "bed"]);
   });
 
-  it("folds the other School days of the Contract, newest first", () => {
-    expect(inbox.otherDays.map((d) => [d.day, d.stars, d.rows.length])).toEqual([["2026-09-21", 1, 2]]);
-  });
 });
 
 describe("buildChildInbox weeks", () => {
@@ -114,6 +111,10 @@ describe("buildChildInbox weeks", () => {
     expect(on("2026-09-17").perfect).toBe(false);
     expect(on("2026-09-18").perfect).toBe(false);
     expect(on("2026-09-18", [{ task_id: "teeth", day: "2026-09-18", approved: true }]).perfect).toBe(true);
+  });
+
+  it("lists the empty past days, oldest first, but never today", () => {
+    expect(kuba([]).emptyDays).toEqual(["2026-09-10", "2026-09-11"]);
   });
 
   it("adds granted weeks at the Contract's Weekly bonus to the balance", () => {

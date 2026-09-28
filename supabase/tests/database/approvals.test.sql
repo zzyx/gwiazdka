@@ -1,7 +1,7 @@
 -- Approvals: the parent's decision on one Task on one School day.
 -- The clock is frozen at Wednesday 23 September 2026, 10:00 in Warsaw.
 begin;
-select plan(13);
+select plan(16);
 \ir _fixtures.psql
 
 -- Ada checked off Brush teeth on Tuesday. She had a Contract before this one, now closed.
@@ -53,6 +53,28 @@ select throws_ok(
   '42501', null,
   'a parent cannot decide on a day in a closed Contract'
 );
+-- History's "All" and "All done this week" approve in bulk, skipping anything decided meanwhile.
+insert into approvals (task_id, day, approved) values ('70000000-0000-0000-0000-0000000000a3', '2026-09-15', false);
+select lives_ok(
+  $$ insert into approvals (task_id, day, approved) values
+       ('70000000-0000-0000-0000-0000000000a1', '2026-09-15', true),
+       ('70000000-0000-0000-0000-0000000000a3', '2026-09-15', true)
+     on conflict (task_id, day) do nothing $$,
+  'a parent approves a whole earlier day at once'
+);
+select results_eq(
+  $$ select task_id::text, approved from approvals where day = '2026-09-15' order by task_id $$,
+  $$ values ('70000000-0000-0000-0000-0000000000a1', true), ('70000000-0000-0000-0000-0000000000a3', false) $$,
+  'approving a day in bulk never overturns a rejection'
+);
+select throws_ok(
+  $$ insert into approvals (task_id, day, approved) values
+       ('70000000-0000-0000-0000-0000000000a1', '2026-06-17', true),
+       ('70000000-0000-0000-0000-0000000000a1', '2026-06-18', true)
+     on conflict (task_id, day) do nothing $$,
+  '42501', null,
+  'a parent cannot fill in the days of a paid-out Contract'
+);
 update approvals set approved = false where task_id = '70000000-0000-0000-0000-0000000000a1' and day = '2026-06-15';
 select results_eq(
   $$ select approved from approvals where task_id = '70000000-0000-0000-0000-0000000000a1' and day = '2026-06-15' $$,
@@ -69,13 +91,13 @@ select throws_ok(
 update approvals set approved = true where task_id = '70000000-0000-0000-0000-0000000000a3' and day = '2026-09-14';
 delete from approvals where task_id = '70000000-0000-0000-0000-0000000000a3';
 select results_eq(
-  $$ select approved from approvals where task_id = '70000000-0000-0000-0000-0000000000a3' $$,
-  $$ values (true) $$,
+  $$ select approved from approvals where task_id = '70000000-0000-0000-0000-0000000000a3' order by day $$,
+  $$ values (true), (false) $$,
   'a child cannot change or remove an Approval'
 );
 select results_eq(
   $$ select count(*)::int from approvals $$,
-  $$ values (2) $$,
+  $$ values (4) $$,
   'a child sees their own Approvals, so the app shows each Task''s state'
 );
 

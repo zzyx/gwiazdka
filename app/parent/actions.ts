@@ -32,6 +32,18 @@ export async function approveAll(taskIds: string[], day: string) {
   if (error) throw error;
 }
 
+// "All" and "All done this week" in the History: approves each of these Tasks
+// on its day, unless it was decided meanwhile, so a rejection is never overturned.
+export async function approveUndecided(cells: { taskId: string; day: string }[]) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("approvals").upsert(
+    cells.map(({ taskId, day }) => ({ task_id: taskId, day, approved: true })),
+    { onConflict: "task_id,day", ignoreDuplicates: true },
+  );
+  revalidatePath("/", "layout");
+  if (error) throw error;
+}
+
 // Grant or No bonus for one finished week of a child's open Contract, or a
 // change of an earlier decision.
 export async function decideWeeklyBonus(contractId: string, weekOf: string, granted: boolean) {
