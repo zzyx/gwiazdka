@@ -28,6 +28,10 @@ _Avoid_: tick, submit, mark done
 The parent's decision on one Task on one School day: approved earns one Star, rejected earns none and shows the child it was not counted. Either way the child can no longer change that Task. The parent can approve a Task that has no Check-off, and can change any decision while the Contract is open.
 _Avoid_: accept, confirm, review
 
+**Photo of the day**:
+One optional photo a child adds to a School day of their open Contract, to show their parent something (a tidy room, a settled dispute). It never earns, blocks or changes a Star. The child can replace or remove it until 22:00 the next calendar day; only the child and their parent see it, and the Payout deletes it. The parent cannot ask for one.
+_Avoid_: proof, evidence, picture task
+
 **Weekly bonus**:
 Extra Stars the parent grants a child by hand, at most once per week, after judging that week. Its size is set by the Contract; it is never computed automatically. For each week of the open Contract, from its Friday on, the parent decides Grant or No bonus and can change it until the Payout. Only the decision is stored: like the rate, the Contract's current size counts for every granted week.
 _Avoid_: streak, weekly reward

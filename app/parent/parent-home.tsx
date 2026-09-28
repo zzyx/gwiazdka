@@ -6,6 +6,7 @@ import { taskEmoji } from "@/lib/task-icons";
 import { formatPln, warsawToday } from "@/lib/today";
 import { signOut } from "../sign-in/actions";
 import { approveAll, decide } from "./actions";
+import { PhotoRow, PhotoThumb } from "./day-photo";
 import { figtree } from "./font";
 import { JoinCodeButton } from "./join-code-button";
 import { AllWeeks, WeekCards } from "./week-bonus";
@@ -83,12 +84,12 @@ function ChildInboxSection({ section, today }: { section: ChildSection; today: s
             <p className="rounded-xl bg-white p-4 text-sm text-[#6B7280]">Nothing is waiting for you.</p>
           )}
           {inbox.waitingDays.map((d) => (
-            <DayCard key={d.day} day={d} />
+            <DayCard key={d.day} day={d} childName={section.name} />
           ))}
           {inbox.otherDays.length > 0 && (
             <div className="flex flex-col divide-y divide-[#E5E7EB] rounded-xl bg-white">
               {inbox.otherDays.slice(0, RECENT_DAYS).map((d) => (
-                <FoldedDay key={d.day} day={d} />
+                <FoldedDay key={d.day} day={d} childName={section.name} />
               ))}
               {inbox.otherDays.length > RECENT_DAYS && (
                 <details>
@@ -97,7 +98,7 @@ function ChildInboxSection({ section, today }: { section: ChildSection; today: s
                   </summary>
                   <div className="flex flex-col divide-y divide-[#E5E7EB] border-t border-[#E5E7EB]">
                     {inbox.otherDays.slice(RECENT_DAYS).map((d) => (
-                      <FoldedDay key={d.day} day={d} />
+                      <FoldedDay key={d.day} day={d} childName={section.name} />
                     ))}
                   </div>
                 </details>
@@ -113,11 +114,12 @@ function ChildInboxSection({ section, today }: { section: ChildSection; today: s
 }
 
 // A day with nothing waiting, folded to one line; tapping it opens its Tasks.
-function FoldedDay({ day }: { day: InboxDay }) {
+function FoldedDay({ day, childName }: { day: InboxDay; childName: string }) {
   return (
     <details>
       <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 text-sm">
         <span>{dayLabel(day.day)}</span>
+        {day.photo && <PhotoThumb childName={childName} day={day.day} photo={day.photo} waitingIds={[]} />}
         <span className="text-[#6B7280]">
           {day.stars}/{day.rows.length} ★
         </span>
@@ -127,7 +129,7 @@ function FoldedDay({ day }: { day: InboxDay }) {
   );
 }
 
-function DayCard({ day }: { day: InboxDay }) {
+function DayCard({ day, childName }: { day: InboxDay; childName: string }) {
   const waitingIds = day.rows.filter((r) => r.state === "checked_off").map((r) => r.taskId);
   return (
     <article className="overflow-hidden rounded-xl bg-white shadow-sm">
@@ -144,6 +146,7 @@ function DayCard({ day }: { day: InboxDay }) {
           </button>
         </form>
       </header>
+      {day.photo && <PhotoRow childName={childName} day={day.day} photo={day.photo} waitingIds={waitingIds} />}
       <DayRows day={day} />
     </article>
   );

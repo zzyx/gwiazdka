@@ -23,6 +23,11 @@ export function warsawToday(now: Date): string {
   return warsawLocal(now).slice(0, 10);
 }
 
+// "HH:MM" in Warsaw, e.g. when a photo was added.
+export function warsawTime(at: string | Date): string {
+  return warsawLocal(new Date(at)).slice(11);
+}
+
 export function addDays(day: string, n: number): string {
   const d = new Date(`${day}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);

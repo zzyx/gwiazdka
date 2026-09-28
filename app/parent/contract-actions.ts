@@ -1,8 +1,10 @@
 "use server";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseRate } from "@/lib/contracts";
+import { DAY_PHOTOS_BUCKET } from "@/lib/day-photos";
 import { createClient } from "@/lib/supabase/server";
 
 export type FormState = { error?: string };
@@ -83,6 +85,19 @@ export async function closeContract(childId: string, contractId: string) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("close_contract", { p_contract_id: contractId });
   if (error) throw new Error(explain(error));
+  await removePaidOutPhotos(supabase, childId);
   revalidatePath("/", "layout");
   redirect(contractsPage(childId, `paid&contract=${encodeURIComponent(contractId)}`));
+}
+
+// The Payout deletes the child's photos. The database has already forgotten
+// them; this removes the pictures from Storage. With no open Contract left,
+// every picture in the child's folder is paid out, including any an earlier
+// Payout failed to remove. A failure here doesn't undo the Payout.
+async function removePaidOutPhotos(supabase: SupabaseClient, childId: string) {
+  const bucket = supabase.storage.from(DAY_PHOTOS_BUCKET);
+  const { data, error } = await bucket.list(childId, { limit: 1000 });
+  const paths = (data ?? []).map((f) => `${childId}/${f.name}`);
+  const removed = paths.length ? await bucket.remove(paths) : { error: null };
+  if (error || removed.error) console.error("Couldn't remove paid-out photos", error ?? removed.error);
 }

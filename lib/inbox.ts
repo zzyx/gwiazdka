@@ -1,11 +1,12 @@
 // The parent's "Inbox by child": what waits for Approval, day by day, inside
 // each child's open Contract. Pure, so it can be tested without a database.
+import type { DayPhoto } from "./day-photos";
 import { addDays, isSchoolDay, taskState, type TaskState } from "./today";
 import { canJudge, mondayOf } from "./weeks";
 
 export type InboxRow = { taskId: string; name: string; icon: string; state: TaskState };
 
-export type InboxDay = { day: string; rows: InboxRow[]; waiting: number; stars: number };
+export type InboxDay = { day: string; rows: InboxRow[]; waiting: number; stars: number; photo?: DayPhoto };
 
 // One week of the Contract as the parent judges it for the Weekly bonus.
 export type InboxWeek = {
