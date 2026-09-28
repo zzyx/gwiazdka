@@ -1,0 +1,724 @@
+<title>Gwiazdki Install and Join</title>
+<!--
+  PROTOTYPE, throwaway. Answers zzyx/gwiazdka#56: how does a teen (13 to 17) get from a link to their
+  Today screen on an iPhone, where the Join code must be typed inside the Home Screen app?
+  Two phones: Kuba's iPhone on the left (Safari, the Add to Home Screen menus, the Home Screen, then the
+  installed app, drawn in Midnight) and the parent's Inbox on the right (its current look).
+  Walkthrough layouts on the Safari join page (floating bar or arrow keys):
+    A  Steps: four numbered steps on one screen
+    B  Coach: one step at a time, with an arrow at Safari's ⋯ button
+    C  Clip: a short looping clip of the taps
+  Switches: the parent's code as a sheet with QR and countdown (proposed) or the inline link (today);
+  the code field in Safari hidden (proposed) or shown (today, which wastes a code).
+  iOS menus are drawn approximations of current Safari; the QR is a drawn stand-in. Sample data is made up.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --bg:#EEF0F5; --panel:#FFFFFF; --ink:#1C2030; --muted:#5B6278; --line:#D9DDE7;
+  --accent:#2F5BEA; --chip:#E4E8F3; --bar:#141824; --bar-ink:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#12141B; --panel:#1C1F2A; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+    --accent:#8FA8FF; --chip:#262B3A; --bar:#F1F3F9; --bar-ink:#12141B;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#12141B; --panel:#1C1F2A; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+  --accent:#8FA8FF; --chip:#262B3A; --bar:#F1F3F9; --bar-ink:#12141B;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:Figtree,system-ui,-apple-system,sans-serif;font-size:14px;padding-inline:16px;padding-block:20px 96px;margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.intro{display:flex;flex-direction:column;gap:12px}
+.intro h1{font-size:24px;line-height:1.2;margin:0;text-wrap:balance}
+.intro p{margin:0;color:var(--muted);line-height:1.5}
+.ctl{display:flex;flex-direction:column;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ctl-row>span{width:84px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.seg{display:inline-flex;background:var(--chip);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:8px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.sw{display:inline-flex;gap:6px}
+.sw button{width:26px;height:26px;border-radius:50%;border:2px solid transparent;padding:0}
+.sw button[aria-pressed="true"]{border-color:var(--ink)}
+.reset{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 12px;font-weight:600}
+.abouts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.about{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.about h2{margin:0;font-size:15px}
+.about ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;color:var(--muted);line-height:1.45}
+.about p{margin:0;color:var(--muted);line-height:1.45}
+.about b{color:var(--ink)}
+.phones{display:flex;gap:28px;justify-content:center;flex-wrap:wrap}
+.pcol{display:flex;flex-direction:column;gap:8px;align-items:center;max-width:100%}
+.pcol>h3{margin:0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.phone{width:380px;max-width:100%;height:760px;border-radius:44px;border:10px solid #0D0F16;background:#0D0F16;overflow:hidden;position:relative;box-shadow:0 20px 50px rgba(20,24,40,.25)}
+.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;border-radius:34px}
+@media (max-width:980px){ .top{grid-template-columns:1fr} .abouts{grid-template-columns:1fr} }
+@media (max-width:480px){
+  body{padding-inline:8px}
+  .switcher .lbl small{display:none}
+  .phone{border-width:0;border-radius:18px;height:720px;box-shadow:none}
+  .screen{border-radius:18px}
+}
+.switcher{position:fixed;left:50%;transform:translateX(-50%);bottom:0;margin-bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;align-items:center;gap:4px;background:var(--bar);color:var(--bar-ink);border-radius:999px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:calc(100% - 24px)}
+.switcher button{border:0;background:transparent;color:inherit;width:40px;height:40px;border-radius:50%;font-size:18px;flex:none}
+.switcher button:hover{background:rgba(127,127,127,.25)}
+.switcher .lbl{padding:0 10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switcher .lbl small{opacity:.65;font-weight:500}
+.status{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font:600 14px Figtree,system-ui,sans-serif}
+
+/* ============ CHILD (Midnight, as shipped) ============ */
+.app{--bgB:#0A0E1C;--cardB:#141A2E;--card2B:#1B2340;--inkB:#EEF1FF;--mutB:#8A93B8;--lineB:#252E4D;--acc:#FFC54D;--accInk:var(--acc);--wait:#7FA7FF;
+  min-height:100%;padding-bottom:36px;position:relative;
+  background:radial-gradient(120% 50% at 85% -10%,color-mix(in srgb,var(--acc) 14%,transparent),transparent 60%),var(--bgB);
+  color:var(--inkB);font-family:Sora,system-ui,sans-serif;color-scheme:dark}
+.app.light{--bgB:#EEF0F7;--cardB:#FFFFFF;--card2B:#F4F5FA;--inkB:#10142A;--mutB:#5E6688;--lineB:#DCE0EE;--wait:#3867E0;--accInk:color-mix(in oklab,var(--acc),#10142A 45%);color-scheme:light}
+.app.lock{height:100%;overflow:hidden}
+.app svg.i{width:1em;height:1em;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.app svg.st{width:1em;height:1em;display:inline-block;vertical-align:-.12em;flex:none}
+.app button{border:0;background:none;padding:0;text-align:left}
+.app header{padding:6px 20px 16px;display:flex;align-items:center;gap:12px}
+.who{flex:1;min-width:0}
+.who small{display:block;font-size:12px;color:var(--mutB)}
+.who h1{margin:2px 0 0;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.hbtn{width:36px;height:36px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;color:var(--mutB);font-size:17px;position:relative;flex:none}
+.bal{display:flex!important;flex-direction:column;align-items:center;justify-content:center;width:96px;height:96px;border-radius:50%;background:var(--cardB)!important;border:1px solid var(--lineB)!important;position:relative;flex:none}
+.bal::before{content:"";position:absolute;inset:-1px;border-radius:50%;background:conic-gradient(var(--acc) calc(var(--p)*1%),transparent 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))}
+.bal b{font-size:26px;font-weight:800;color:var(--accInk);display:flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums;line-height:1}
+.bal small{font-size:10px;color:var(--mutB);margin-top:3px}
+.wbar{display:flex;align-items:center;gap:8px;padding:0 16px 10px}
+.wbar .t{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center}
+.wbar .t b{font-size:15px;font-weight:700}
+.wbar .t small{font-size:12px;color:var(--mutB)}
+.arrow{width:36px;height:36px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;font-size:17px;flex:none}
+.arrow:disabled{opacity:.3;cursor:default}
+.week{display:flex;gap:6px;padding:0 16px 18px}
+.wd{flex:1;display:flex!important;flex-direction:column;align-items:center;gap:6px;padding:10px 0!important;border-radius:16px;background:var(--cardB)!important;border:1px solid var(--lineB)!important;position:relative;cursor:pointer;text-align:center!important}
+.wd .l{font-size:11px;color:var(--mutB);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.wd .n{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;height:22px;display:grid;place-items:center}
+.wd .pips{display:flex;gap:2px;height:12px;align-items:center}
+.wd .pips i{width:5px;height:5px;border-radius:50%;background:var(--lineB)}
+.wd .pips i.on{background:var(--acc)}
+.wd.today{border-color:var(--accInk)!important}
+.wd.sel{background:var(--inkB)!important;color:var(--bgB);border-color:var(--inkB)!important}
+.wd.sel .l{color:color-mix(in srgb,var(--bgB) 60%,transparent)}
+.wd.sel .pips i:not(.on){background:color-mix(in srgb,var(--mutB) 50%,transparent)}
+.wd.fut{opacity:.35;cursor:default}
+.wd .dot{position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:var(--wait);border:2px solid var(--bgB)}
+.dh{display:flex;align-items:center;gap:10px;padding:0 20px 12px}
+.dh h2{margin:0;font-size:18px;font-weight:700;flex:1;min-width:0}
+.dh h2 small{font-size:13px;font-weight:500;color:var(--mutB);margin-left:6px}
+.pill{font-size:12px;color:var(--mutB);background:var(--cardB);border:1px solid var(--lineB);border-radius:999px;padding:4px 10px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.note{margin:0 16px 12px;padding:11px 14px;border-radius:14px;font-size:13px;line-height:1.45;background:var(--cardB);border:1px solid var(--lineB);color:var(--mutB);display:flex;gap:10px;align-items:center}
+.note.ask{border-color:color-mix(in srgb,var(--acc) 55%,transparent);background:color-mix(in srgb,var(--acc) 10%,var(--cardB));color:var(--inkB)}
+.note.ask svg{color:var(--accInk);font-size:18px}
+.note.ask .go{margin-left:auto;border-radius:10px!important;background:var(--acc)!important;color:#1A1405;font-weight:700;padding:7px 11px!important;font-size:12px;white-space:nowrap}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
+.tile{position:relative;display:flex!important;flex-direction:column;gap:14px;min-height:118px;padding:14px!important;border-radius:20px;background:var(--cardB)!important;border:1px solid var(--lineB)!important;cursor:pointer}
+.tile[data-locked]{cursor:default}
+.tile .ic{font-size:22px;color:var(--mutB)}
+.tile b{font-size:15px;font-weight:600;line-height:1.25}
+.tile small{margin-top:auto;font-size:12px;color:var(--mutB);display:flex;align-items:center;gap:5px}
+.tile .bdg{position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;border:1.5px solid var(--lineB)}
+.tile.checked_off{border-color:color-mix(in srgb,var(--wait) 60%,transparent)!important;background:color-mix(in srgb,var(--wait) 10%,var(--cardB))!important}
+.tile.checked_off .ic,.tile.checked_off small{color:var(--wait)}
+.tile.checked_off .bdg{background:var(--wait);border-color:var(--wait);color:var(--bgB)}
+.tile.approved{border-color:color-mix(in srgb,var(--acc) 55%,transparent)!important;background:color-mix(in srgb,var(--acc) 9%,var(--cardB))!important}
+.tile.approved .ic,.tile.approved small{color:var(--accInk)}
+.tile.approved .bdg{background:var(--acc);border-color:var(--acc);color:#1A1405}
+.tile.rejected b{text-decoration:line-through;color:var(--mutB)}
+.tile.rejected{opacity:.75}
+.tile.hasc small{padding-right:40px}
+.wtot{margin:20px 16px 0;padding:14px 16px;border-radius:20px;border:1px solid var(--lineB);background:var(--cardB);display:flex;justify-content:space-between;align-items:baseline}
+.wtot b{font-size:15px}
+.wtot em{font-style:normal;font-size:22px;font-weight:800;color:var(--accInk);display:flex;gap:4px;align-items:center}
+
+/* A: photo card */
+.pcard{margin:14px 16px 0;border-radius:20px;border:1.5px dashed var(--lineB)!important;background:transparent;display:flex!important;align-items:center;gap:14px;padding:16px!important;width:calc(100% - 32px);cursor:pointer}
+.pcard .cam{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--card2B);color:var(--accInk);font-size:21px;flex:none}
+.pcard div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.pcard b{font-size:15px;font-weight:600}
+.pcard small{font-size:12px;color:var(--mutB);line-height:1.4}
+.pcard.asked{border-style:solid!important;border-color:color-mix(in srgb,var(--acc) 60%,transparent)!important}
+.pfull{margin:14px 16px 0;border-radius:20px;overflow:hidden;border:1px solid var(--lineB);background:var(--cardB)}
+.pfull .img{display:block!important;width:100%;aspect-ratio:4/3;background:#000 center/cover no-repeat;position:relative}
+.pfull .bar{display:flex;align-items:center;gap:10px;padding:10px 14px}
+.pfull .bar span{flex:1;font-size:12px;color:var(--mutB);display:flex;gap:6px;align-items:center}
+.pfull .bar button{font-size:13px;font-weight:600;color:var(--accInk);padding:4px 2px!important}
+.pfull .bar button.rm{color:var(--mutB)}
+.up{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,14,28,.55);color:#fff;font:600 13px Sora,system-ui,sans-serif}
+.up i{display:block;width:60%;height:4px;border-radius:2px;background:rgba(255,255,255,.25);overflow:hidden;margin-top:8px}
+.up i::after{content:"";display:block;height:100%;width:40%;background:var(--acc);animation:load .9s ease-in-out forwards}
+@keyframes load{to{width:100%}}
+
+/* B: camera in the day header */
+.dcam{width:36px;height:36px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;color:var(--mutB);font-size:17px;flex:none;position:relative}
+.dcam.asked{border-color:var(--acc)!important;color:var(--accInk);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 22%,transparent)}
+.dthumb{width:36px;height:36px;border-radius:50%;flex:none;background-color:#000!important;background-position:center;background-size:cover;background-repeat:no-repeat;border:2px solid var(--acc)!important;position:relative}
+.dthumb .spin{position:absolute;inset:-2px;border-radius:50%;border:2px solid transparent;border-top-color:#fff;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wd .cm{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:var(--bgB);display:grid;place-items:center;font-size:10px;color:var(--mutB)}
+.wd.sel .cm{background:var(--inkB);color:var(--bgB)}
+
+/* C: photo on a Task */
+.tcam{position:absolute;right:10px;bottom:10px;width:30px;height:30px;border-radius:10px;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--card2B)!important;color:var(--mutB);font-size:15px;z-index:2}
+.tcam.asked{border-color:var(--acc)!important;color:var(--accInk)}
+.tthumb{position:absolute;right:10px;bottom:10px;width:38px;height:38px;border-radius:10px;background-color:#000!important;background-position:center;background-size:cover;background-repeat:no-repeat;border:2px solid var(--cardB)!important;box-shadow:0 0 0 1.5px var(--acc);z-index:2}
+
+/* teen: action sheet + viewer */
+.scrim{position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.45);display:flex;flex-direction:column;justify-content:flex-end;padding:10px}
+.ios{background:rgba(245,245,247,.97);border-radius:14px;overflow:hidden;font:400 17px Figtree,-apple-system,system-ui,sans-serif;color:#0A84FF;margin-bottom:8px}
+.ios button{display:flex!important;justify-content:space-between;align-items:center;width:100%;padding:14px 18px!important;border-top:1px solid rgba(0,0,0,.12)!important;text-align:left;color:#0A84FF}
+.ios button:first-child{border-top:0!important}
+.ios button small{color:#8E8E93;font-size:13px}
+.ios.cancel button{justify-content:center;font-weight:600}
+.ios .cap{padding:10px 18px;font-size:13px;color:#8E8E93;text-align:center;border-bottom:1px solid rgba(0,0,0,.12)}
+.viewer{position:absolute;inset:0;z-index:30;background:#000;display:flex;flex-direction:column;color:#fff;font-family:Sora,system-ui,sans-serif}
+.viewer .vt{display:flex;align-items:center;justify-content:space-between;padding:52px 18px 12px;font-size:13px}
+.viewer .vt b{font-size:15px;display:block}
+.viewer .vt small{opacity:.7}
+.viewer .vt button,.viewer .va button{color:#fff}
+.viewer .vimg{flex:1;background:center/contain no-repeat}
+.viewer .va{display:flex;gap:10px;padding:14px 18px 30px}
+.viewer .va button{flex:1;text-align:center!important;border-radius:14px!important;padding:13px!important;font-weight:700;background:rgba(255,255,255,.14)!important}
+.viewer .va button.pri{background:var(--acc)!important;color:#1A1405}
+.viewer .va p{margin:0;flex:1;text-align:center;font-size:12px;opacity:.7}
+.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;padding:11px 16px;border-radius:999px;background:var(--inkB);color:var(--bgB);font:600 13px Sora,system-ui,sans-serif;white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.35);animation:toast 2.6s ease forwards;display:flex;gap:8px;align-items:center}
+@keyframes toast{0%{opacity:0;transform:translate(-50%,10px)}10%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
+
+/* ============ PARENT (as shipped: Inbox by child, Figtree, white cards) ============ */
+.par{min-height:100%;background:#F6F7F9;color:#1F2430;font-family:Figtree,system-ui,sans-serif;font-size:15px;padding-bottom:30px;color-scheme:light;position:relative}
+.par.lock{height:100%;overflow:hidden}
+.par button{border:0;background:none;padding:0;text-align:left}
+.ph{display:flex;align-items:center;gap:10px;padding:4px 16px 14px}
+.ph h1{margin:0;font-size:24px;font-weight:700;flex:1}
+.ph .lnk{color:#2563EB;font-size:14px}
+.wpill{border-radius:999px;padding:4px 12px;font-size:14px;font-weight:700;background:#E5E7EB;color:#6B7280}
+.wpill.on{background:#2563EB;color:#fff}
+.kid{display:flex;flex-direction:column;gap:10px;padding:0 16px 22px}
+.kh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.kh h2{margin:0;font-size:20px;font-weight:700}
+.kh .m{font-size:14px;font-weight:600;display:flex;gap:6px;align-items:center}
+.amb{border-radius:999px;background:#FEF3C7;color:#92400E;font-weight:700;padding:2px 8px;font-size:13px}
+.pc{background:#fff;border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.06);overflow:hidden}
+.pc .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid #E5E7EB}
+.pc .hd h3{margin:0;font-size:15px;font-weight:700}
+.pc .hd p{margin:1px 0 0;font-size:12px;color:#6B7280}
+.pbtn{border-radius:8px!important;background:#2563EB!important;color:#fff;font-weight:700;padding:8px 12px!important;font-size:14px;white-space:nowrap}
+.prow{display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid #F0F1F3;font-size:14px;min-height:46px}
+.prow:first-child{border-top:0}
+.prow .e{font-size:20px}
+.prow .n{flex:1}
+.prow .ok{color:#15803D;font-weight:600}
+.prow .no{color:#B91C1C;font-weight:600}
+.prow .wt{color:#92400E;font-weight:600;font-size:13px}
+.prow .dec{display:flex;gap:6px}
+.prow .dec button{width:32px;height:32px;border-radius:8px;border:1px solid #D1D5DB!important;display:grid;place-items:center;font-weight:700}
+.prow .dec button.y{color:#15803D}
+.prow .dec button.x{color:#B91C1C}
+.muted{color:#6B7280}
+.pthumbs{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #F0F1F3}
+.pthumbs .th{width:72px;height:54px;border-radius:8px;background-color:#ddd;background-position:center;background-size:cover;background-repeat:no-repeat;flex:none}
+.pthumbs span{font-size:13px;color:#6B7280;line-height:1.35}
+.pthumbs span b{color:#1F2430;display:block;font-size:14px}
+.rth{width:34px;height:34px;border-radius:7px;background-color:#ddd;background-position:center;background-size:cover;background-repeat:no-repeat;flex:none;box-shadow:0 0 0 1px #E5E7EB}
+.askl{color:#2563EB!important;font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px}
+.asked{font-size:13px;color:#92400E;font-weight:600}
+.pbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 16px;border-bottom:1px solid #F0F1F3;font-size:13px;color:#6B7280}
+.fold{display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid #E5E7EB;font-size:14px}
+.fold:first-child{border-top:0}
+.fold .n{flex:1}
+.fold .s{color:#6B7280}
+.fold .rth{width:28px;height:28px}
+.pv{position:absolute;inset:0;z-index:30;background:#000;display:flex;flex-direction:column;color:#fff}
+.pv .vt{display:flex;align-items:center;justify-content:space-between;padding:52px 16px 12px;font-size:13px}
+.pv .vt b{display:block;font-size:15px}
+.pv .vt small{opacity:.7}
+.pv .vt button{color:#fff;font-size:15px}
+.pv .vimg{flex:1;background:center/contain no-repeat}
+.pv .strip{display:flex;gap:6px;justify-content:center;padding:10px}
+.pv .strip button{width:40px;height:40px;border-radius:6px;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:.5}
+.pv .strip button.on{opacity:1;outline:2px solid #fff}
+.pv .va{display:flex;gap:10px;padding:12px 16px 28px;align-items:center}
+.pv .va p{margin:0;flex:1;font-size:13px;opacity:.8}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ============ this prototype ============ */
+.ctl-row>span{width:112px}
+.state{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.log{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;color:var(--muted);font-size:13px;line-height:1.4;max-height:220px;overflow:auto}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-weight:600}
+.help{display:flex;gap:8px;flex-wrap:wrap}
+.help button{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:7px 12px;font-weight:600}
+@media (max-width:980px){ .state{grid-template-columns:1fr} }
+
+/* teen screens: Midnight */
+.app{display:flex;flex-direction:column}
+.app.safari{padding-bottom:0}
+.page{flex:1;overflow:auto;display:flex;flex-direction:column}
+.wel{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px 26px;text-align:center}
+.logo{width:88px;height:88px;border-radius:24px;display:grid;place-items:center;background:var(--cardB);border:1px solid var(--lineB);color:var(--acc);font-size:52px;box-shadow:0 0 60px color-mix(in srgb,var(--acc) 25%,transparent)}
+.wel h1{margin:6px 0 0;font-size:30px;font-weight:800;letter-spacing:-.02em}
+.wel p{margin:0;color:var(--mutB);font-size:14px;line-height:1.5;max-width:260px}
+.cta{display:block!important;width:100%;max-width:290px;text-align:center!important;border-radius:16px!important;padding:15px!important;font-weight:700;font-size:15px;background:var(--acc)!important;color:#1A1405}
+.lnk2{color:var(--mutB);font-size:13px;text-decoration:underline}
+.jh{padding:8px 22px 4px}
+.jh small{font-size:12px;color:var(--mutB);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.jh h2{margin:4px 0 6px;font-size:23px;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+.jh p{margin:0;font-size:13px;color:var(--mutB);line-height:1.5}
+.steps{list-style:none;margin:16px 16px 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.steps li{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:16px;background:var(--cardB);border:1px solid var(--lineB)}
+.steps .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--card2B);font-weight:800;font-size:13px;color:var(--accInk);flex:none}
+.steps b{font-weight:600;font-size:14px;line-height:1.35}
+.steps .k{display:inline-grid;place-items:center;min-width:26px;height:22px;padding:0 6px;border-radius:7px;background:var(--card2B);border:1px solid var(--lineB);font-size:12px;vertical-align:1px;margin:0 2px}
+.steps .k svg{font-size:13px}
+.why{margin:12px 16px 0;padding:11px 14px;border-radius:14px;font-size:12.5px;line-height:1.5;color:var(--mutB);border:1px dashed var(--lineB)}
+.already{margin:14px 22px 18px;font-size:13px;color:var(--mutB);text-align:center}
+.already b{color:var(--inkB)}
+/* B coach */
+.coach{margin:16px 16px 0;padding:16px;border-radius:20px;background:var(--cardB);border:1px solid var(--lineB);display:flex;flex-direction:column;gap:12px}
+.coach .top{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--mutB);font-weight:600}
+.coach .dots{display:flex;gap:5px}.coach .dots i{width:7px;height:7px;border-radius:50%;background:var(--lineB)}.coach .dots i.on{background:var(--acc)}
+.coach h3{margin:0;font-size:18px;font-weight:700;line-height:1.3}
+.coach .pic{height:150px;border-radius:14px;background:var(--card2B);display:grid;place-items:center;position:relative;overflow:hidden}
+.coach .nav{display:flex;gap:8px}
+.coach .nav button{flex:1;text-align:center!important;border-radius:12px!important;padding:11px!important;font-weight:700;background:var(--card2B)!important}
+.coach .nav button.pri{background:var(--acc)!important;color:#1A1405}
+.arrowdn{position:absolute;right:30px;bottom:66px;z-index:6;color:var(--acc);font-size:44px;animation:bob 1s ease-in-out infinite;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
+@keyframes bob{50%{transform:translateY(8px)}}
+/* mini iOS pictures (B and C) */
+.mini{width:190px;border-radius:12px;background:#F2F2F7;color:#111;font:500 11px Figtree,system-ui,sans-serif;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.mini .r{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-top:1px solid #DDD}
+.mini .r:first-child{border-top:0}
+.mini .r.hl{background:#DCE8FF;color:#0A60FF;font-weight:700}
+.mini .bar{display:flex;align-items:center;gap:6px;padding:7px 8px;background:#F9F9FB}
+.mini .bar .addr{flex:1;background:#E6E6EB;border-radius:8px;padding:4px 6px;text-align:center;font-size:10px}
+.mini .bar .dd{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-weight:800}
+.mini .bar .dd.hl{background:#0A60FF;color:#fff;box-shadow:0 0 0 4px rgba(10,96,255,.25)}
+.mini .ic{width:30px;height:30px;border-radius:8px;background:#0A0E1C;color:#FFC54D;display:grid;place-items:center;font-size:18px}
+.homemini{width:190px;height:120px;border-radius:12px;background:linear-gradient(160deg,#27305A,#0B0F22 60%,#3A2350);display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.homemini i{width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.14);display:block}
+.homemini i.gw{background:#0A0E1C;color:#FFC54D;display:grid;place-items:center;font-size:20px;font-style:normal;box-shadow:0 0 0 2px #FFC54D}
+.tapdot{position:absolute;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.55);border:2px solid #fff;animation:tap 1.2s ease-out infinite;pointer-events:none}
+@keyframes tap{0%{transform:scale(.6);opacity:1}100%{transform:scale(1.5);opacity:0}}
+/* C film */
+.film{margin:16px 16px 0;border-radius:20px;background:var(--cardB);border:1px solid var(--lineB);padding:16px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.film .pic{width:100%;height:170px;border-radius:14px;background:var(--card2B);display:grid;place-items:center;position:relative;overflow:hidden}
+.film p{margin:0;font-size:14px;font-weight:600;text-align:center;min-height:40px;line-height:1.4}
+.film .prog{display:flex;gap:4px;width:100%}.film .prog i{flex:1;height:3px;border-radius:2px;background:var(--lineB)}.film .prog i.on{background:var(--acc)}
+/* code entry */
+.code{margin:18px 22px 0;display:flex;flex-direction:column;gap:10px}
+.code label{font-size:13px;color:var(--mutB);font-weight:600}
+.code input{width:100%;font:800 30px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-align:center;padding:16px 8px;border-radius:18px;border:1.5px solid var(--lineB);background:var(--cardB);color:var(--inkB);text-transform:uppercase;outline:none}
+.code input:focus{border-color:var(--acc);box-shadow:0 0 0 4px color-mix(in srgb,var(--acc) 22%,transparent)}
+.code input::placeholder{color:color-mix(in srgb,var(--mutB) 45%,transparent)}
+.code .err{margin:0;font-size:13px;color:#F87171;text-align:center}
+.code .cta{max-width:none}
+.code .cta:disabled{opacity:.45}
+.code .paste{align-self:center;font-size:13px;color:var(--accInk);font-weight:600}
+/* safari chrome */
+.sfbar{display:flex;align-items:center;gap:10px;padding:8px 12px 22px;background:color-mix(in srgb,var(--bgB) 70%,#2C2C34);border-top:1px solid var(--lineB);font:500 13px Figtree,system-ui,sans-serif;position:relative;z-index:5}
+.sfbar .b{width:34px;height:34px;border-radius:50%;display:grid!important;place-items:center;color:var(--inkB);font-size:17px;opacity:.8}
+.sfbar .addr{flex:1;text-align:center;border-radius:12px;background:rgba(127,127,140,.22);padding:9px;color:var(--inkB);font-size:13px;display:flex;justify-content:center;align-items:center;gap:6px}
+.sfbar .more{width:38px;height:38px;border-radius:50%;display:grid!important;place-items:center;background:rgba(127,127,140,.22)!important;color:var(--inkB);font-weight:800;font-size:18px;letter-spacing:1px}
+.ios2{position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.4);display:flex;flex-direction:column;justify-content:flex-end;padding:10px}
+.ios2 .menu{align-self:flex-end;width:230px;margin-bottom:70px;background:rgba(242,242,247,.97);border-radius:14px;overflow:hidden;font:400 16px Figtree,-apple-system,system-ui,sans-serif;color:#111}
+.ios2 .menu button,.ios2 .sheet2 button{display:flex!important;justify-content:space-between;align-items:center;width:100%;padding:12px 16px!important;border-top:1px solid rgba(0,0,0,.1)!important;color:#111}
+.ios2 .menu button:first-child{border-top:0!important}
+.ios2 .menu button.go,.ios2 .sheet2 button.go{font-weight:700;color:#0A60FF}
+.ios2 .sheet2{background:rgba(242,242,247,.98);border-radius:16px;overflow:hidden;font:400 16px Figtree,-apple-system,system-ui,sans-serif;color:#111}
+.ios2 .sheet2 .hd{display:flex;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(0,0,0,.1);font-size:13px;color:#555}
+.ios2 .sheet2 .hd b{display:block;color:#111;font-size:14px}
+.ios2 .sheet2 .apps{display:flex;gap:14px;padding:14px 16px;border-bottom:1px solid rgba(0,0,0,.1)}
+.ios2 .sheet2 .apps i{width:46px;height:46px;border-radius:12px;background:#D8D8E0;display:block}
+.ios2 .add{position:absolute;inset:0;z-index:31;background:#F2F2F7;color:#111;font:400 16px Figtree,-apple-system,system-ui,sans-serif;display:flex;flex-direction:column}
+.ios2 .add .nav{display:flex;justify-content:space-between;align-items:center;padding:52px 16px 14px;font-weight:600}
+.ios2 .add .nav button{color:#0A60FF}
+.ios2 .add .nav button.go{font-weight:700}
+.ios2 .add .card{margin:10px 16px;background:#fff;border-radius:12px;display:flex;gap:12px;align-items:center;padding:12px}
+.ios2 .add .card i{width:58px;height:58px;border-radius:14px;background:#0A0E1C;color:#FFC54D;display:grid;place-items:center;font-size:34px;font-style:normal}
+.ios2 .add .card div{flex:1;font-size:13px;color:#777}
+.ios2 .add .card b{display:block;font-size:17px;color:#111;border-bottom:1px solid #DDD;padding-bottom:6px;margin-bottom:6px;font-weight:500}
+.ios2 .add .tog{margin:6px 16px;background:#fff;border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center}
+.ios2 .add .tog i{width:46px;height:28px;border-radius:14px;background:#34C759;position:relative;display:block}
+.ios2 .add .tog i::after{content:"";position:absolute;right:2px;top:2px;width:24px;height:24px;border-radius:50%;background:#fff}
+.ios2 .add small{margin:4px 30px;font-size:12px;color:#777;line-height:1.4}
+.home{position:absolute;inset:0;background:linear-gradient(160deg,#27305A,#0B0F22 60%,#3A2350);color:#fff;font-family:Figtree,system-ui,sans-serif;display:flex;flex-direction:column}
+.home .icons{display:grid;grid-template-columns:repeat(4,1fr);gap:22px 10px;padding:30px 22px}
+.home .ap{display:flex!important;flex-direction:column;align-items:center;gap:6px;font-size:11px;color:#fff}
+.home .ap i{width:60px;height:60px;border-radius:15px;display:block;background:rgba(255,255,255,.14)}
+.home .ap i.gw{background:#0A0E1C;display:grid;place-items:center;color:#FFC54D;font-size:34px;box-shadow:0 0 0 1px rgba(255,255,255,.2);font-style:normal}
+.home .ap i.sf{background:linear-gradient(#fff,#DCE8FF);display:grid;place-items:center;color:#0A60FF;font-size:30px;font-style:normal}
+.home .ap.new i{animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(.3)}70%{transform:scale(1.1)}}
+.home .hint{margin:auto 22px 40px;padding:12px 14px;border-radius:14px;background:rgba(0,0,0,.35);font-size:13px;line-height:1.45;opacity:.9}
+.board{padding:0 16px}
+.board .tile{min-height:96px}
+.youin{margin:0 16px 14px;padding:12px 14px;border-radius:16px;background:color-mix(in srgb,var(--acc) 12%,var(--cardB));border:1px solid color-mix(in srgb,var(--acc) 45%,transparent);font-size:13px;line-height:1.45}
+.youin b{display:block;font-size:14px}
+/* parent */
+.par .kid .cd{font-size:14px;color:#2563EB;font-weight:600;align-self:flex-start;display:flex;gap:6px;align-items:center}
+.pscrim{position:absolute;inset:0;z-index:30;background:rgba(17,24,39,.45);display:flex;flex-direction:column;justify-content:flex-end}
+.psheet{background:#fff;border-radius:20px 20px 0 0;padding:10px 20px 28px;display:flex;flex-direction:column;gap:14px;color:#1F2430}
+.psheet .grab{width:40px;height:5px;border-radius:3px;background:#D1D5DB;margin:0 auto}
+.psheet h3{margin:0;font-size:19px}
+.psheet .big{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px;border-radius:14px;background:#F3F4F6}
+.psheet .big b{font:800 34px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em}
+.psheet .big span{font-size:13px;color:#6B7280;font-variant-numeric:tabular-nums}
+.psheet .big.exp b{color:#9CA3AF;text-decoration:line-through}
+.psheet .big.used{background:#DCFCE7}.psheet .big.used span{color:#166534;font-weight:600}
+.psheet .qrrow{display:flex;gap:14px;align-items:center}
+.psheet .qr{width:108px;height:108px;flex:none;background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:6px}
+.psheet ol{margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:#374151;display:flex;flex-direction:column;gap:3px}
+.psheet .acts{display:flex;gap:10px}
+.psheet .acts button{flex:1;text-align:center;border-radius:10px;padding:11px;font-weight:700;border:1px solid #D1D5DB!important}
+.psheet .acts button.pri{background:#2563EB!important;color:#fff;border-color:#2563EB!important}
+.inl{font-size:14px}
+.inl b{font:700 20px ui-monospace,Menlo,monospace;letter-spacing:.12em}
+.signin{min-height:100%;background:#F6F7F9;color:#1F2430;font-family:Figtree,system-ui,sans-serif;display:flex;flex-direction:column;gap:12px;padding:40px 24px}
+.signin h1{margin:0 0 8px;font-size:26px}
+.signin label{display:flex;flex-direction:column;gap:4px;font-size:14px;font-weight:600}
+.signin input{padding:12px;border-radius:10px;border:1px solid #D1D5DB;font:inherit;font-weight:400}
+.signin .pbtn{text-align:center}
+.signin .back{color:#2563EB;font-size:14px}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div class="intro">
+      <h1>How does a teen get from a link to their Today screen?</h1>
+      <p>#56. On an iPhone, the Join code has to be typed <b>inside the app on the Home Screen</b>, not in Safari, because the two keep separate sign-ins. Walk Kuba through it on the left: open the join page, follow the walkthrough using Safari's <b>⋯</b> button, open Gwiazdki from the Home Screen, and type the code the parent's phone shows on the right.</p>
+      <div class="help" id="help"></div>
+    </div>
+    <div class="ctl">
+      <div class="ctl-row"><span>Walkthrough</span><div class="seg" id="vSeg"></div></div>
+      <div class="ctl-row"><span>Parent code</span><div class="seg" id="pSeg"></div></div>
+      <div class="ctl-row"><span>Code in Safari</span><div class="seg" id="sfSeg"></div></div>
+      <div class="ctl-row"><span>Theme</span><div class="seg" id="themeSeg"></div><button class="reset" id="reset">Start over</button></div>
+    </div>
+  </div>
+  <div class="phones">
+    <div class="pcol"><h3>Kuba's iPhone</h3><div class="phone"><div class="screen" id="cscr"></div></div></div>
+    <div class="pcol"><h3>Parent</h3><div class="phone"><div class="screen" id="pscr"></div></div></div>
+  </div>
+  <div class="state">
+    <div class="about" id="sPanel"></div>
+    <div class="about" id="lPanel"></div>
+    <div class="about" id="pAbout"></div>
+  </div>
+  <div class="abouts">
+    <div class="about" id="vAbout"></div>
+    <div class="about"><h2>Code field in Safari</h2><ul>
+      <li><b>Hidden (proposed):</b> in Safari the join page shows only the walkthrough, so a code can't be used up in the browser by mistake.</li>
+      <li><b>Shown (today):</b> the field is there under a one-line hint. Try it: the code signs in <b>Safari</b> and is used up, then the Home Screen app asks for a new one.</li>
+    </ul></div>
+    <div class="about"><h2>Same in all three (defaults to confirm)</h2><ul>
+      <li><b>Midnight</b> for the welcome and join screens, with the parent sign-in in the parent's look.</li>
+      <li>Opened from the Home Screen and not joined yet: <b>straight to the code field</b>.</li>
+      <li>One code box: formats as <b>XXXX-XXXX</b>, ignores case, spaces and dashes, and takes a paste. One error message.</li>
+      <li>After joining: <b>straight to Today</b>, with no tour.</li>
+      <li>iPhone steps follow current iOS Safari (⋯, Share, Add to Home Screen, Open as Web App). <b>Check them on your iPhone.</b></li>
+      <li>Codes stay single-use for 15 minutes, and a new code doesn't sign out another device.</li>
+    </ul></div>
+  </div>
+</div>
+
+<div class="switcher" role="group" aria-label="Walkthrough switcher">
+  <button id="prev" aria-label="Previous layout">←</button>
+  <div class="lbl" id="lbl"></div>
+  <button id="next" aria-label="Next layout">→</button>
+</div>
+
+<script>
+const VARS = {
+  A:{name:"Steps", about:[
+    "One screen lists <b>four numbered steps</b> with Safari's own symbols drawn inline, plus one line on why the code goes in the Home Screen app.",
+    "Everything at once: easy to glance back at while the Safari menus cover the page.",
+    "The catch: it's a block of text, and teens skim."]},
+  B:{name:"Coach", about:[
+    "<b>One step at a time</b> with Next and Back, and a picture of what to tap. On step 1 a gold arrow bounces over Safari's ⋯ button.",
+    "Friendliest the first time. The page can't see Safari's menus, so Kuba taps Next himself.",
+    "The catch: once a Safari menu is open, the card with the steps is hidden behind it."]},
+  C:{name:"Clip", about:[
+    "A <b>short looping clip</b> of the taps, drawn like the real Safari: ⋯, Share, Add to Home Screen, Add, the new icon. A caption under each frame.",
+    "Almost no reading, so it works for anyone who skips text.",
+    "The catch: hard to follow at your own pace, and it has to be redrawn when iOS changes."]},
+};
+const ORDER = Object.keys(VARS);
+const ACC = "#FFC54D";
+const ICON = {
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  share:'<path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 00-1 1v8a1 1 0 001 1h14a1 1 0 001-1v-8a1 1 0 00-1-1h-1"/>',
+  plus:'<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/>',
+  home:'<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>',
+  down:'<path d="M12 4v15"/><path d="M6 13l6 6 6-6"/>',
+  paste:'<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1"/>',
+  bed:'<path d="M3 19V6"/><path d="M3 15h18v4"/><path d="M21 15v-2.5A2.5 2.5 0 0018.5 10H11v5"/><circle cx="7" cy="12" r="1.8"/>',
+  sparkle:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>',
+  door:'<path d="M5 21V4a1 1 0 011-1h9l4 2v16"/><path d="M3 21h18"/><path d="M15 3v18"/>',
+  doc:'<path d="M15 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7z"/><path d="M14 2v5h5"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+  phone:'<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+};
+const STAR_D = "M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z";
+const svg = k => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+const star = () => `<svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_D}" fill="currentColor"/></svg>`;
+const ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const newCode = () => Array.from({length:8},()=>ALPHA[Math.floor(Math.random()*ALPHA.length)]).join("");
+const fmt = c => c.slice(0,4)+"-"+c.slice(4);
+const clean = s => s.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8);
+
+/* ---------- state ---------- */
+// Kuba's stage: sf-welcome, sf-join (Safari pages), sf-signin, home, app-code, today
+let st, tick;
+function fresh(p={}){
+  return {v:p.v||"A", pv:p.pv||"sheet", sf:p.sf||"hidden", theme:p.theme||"dark",
+    stage:"sf-welcome", ov:null, installed:false, added:false, sfSession:false, appSession:false,
+    input:"", err:null, coach:0, film:0,
+    code:null, codeLeft:0, codeState:"none", psheet:false, log:[]};
+}
+st = fresh();
+const log = s => st.log.unshift(s);
+
+/* ---------- Kuba ---------- */
+const status = (dark=true) => `<div class="status" ${dark?"":'style="color:#111"'}><span>16:05</span><span>●●● 5G</span></div>`;
+function safariBar(){
+  return `<div class="sfbar"><span class="b">‹</span><span class="addr">${svg("lock")} gwiazdka.vercel.app</span><button class="more" data-act="menu" aria-label="More">⋯</button></div>`;
+}
+function welcome(){
+  return `<div class="wel"><div class="logo">${star()}</div><h1>Gwiazdki</h1><p>Check off your day, get it approved, and watch your gwiazdki add up.</p>
+    <button class="cta" data-go="sf-join">I have a code from my parent</button>
+    <button class="lnk2" data-go="sf-signin">Parent sign-in</button></div>`;
+}
+function stepsA(){
+  return `<ol class="steps">
+    <li><span class="n">1</span><b>Tap <span class="k">⋯</span> at the bottom right of Safari</b></li>
+    <li><span class="n">2</span><b>Tap <span class="k">${svg("share")}</span> Share</b></li>
+    <li><span class="n">3</span><b>Tap <span class="k">${svg("plus")}</span> Add to Home Screen, keep <i>Open as Web App</i> on, then Add</b></li>
+    <li><span class="n">4</span><b>Open <span class="k" style="color:var(--acc)">${star()}</span> Gwiazdki from your Home Screen and type your code there</b></li></ol>`;
+}
+const MINI = [
+  () => `<div class="mini"><div class="bar"><span>‹</span><span class="addr">gwiazdka.vercel.app</span><span class="dd hl">⋯</span></div></div>`,
+  () => `<div class="mini"><div class="r">Add Bookmark <span>☆</span></div><div class="r hl">Share <span>⇪</span></div><div class="r">Find on Page <span>⌕</span></div></div>`,
+  () => `<div class="mini"><div class="r">Copy <span>⧉</span></div><div class="r">Add to Favourites <span>☆</span></div><div class="r hl">Add to Home Screen <span>⊞</span></div></div>`,
+  () => `<div class="mini"><div class="r"><span class="ic">${star()}</span><span style="flex:1;margin-left:8px">Gwiazdki</span></div><div class="r">Open as Web App <span style="color:#34C759;font-weight:800">●</span></div><div class="r hl" style="justify-content:flex-end">Add</div></div>`,
+  () => `<div class="homemini"><i></i><i></i><i></i><i></i><i></i><i class="gw">${star()}</i></div>`,
+];
+const COACH = [
+  "Tap ⋯ at the bottom right of Safari",
+  "Tap Share",
+  "Tap Add to Home Screen",
+  "Keep Open as Web App on, then tap Add",
+  "Open Gwiazdki from your Home Screen and type your code there",
+];
+function joinSafari(){
+  let body = "";
+  if (st.v==="A") body = stepsA() + `<div class="why">Why not type the code here? Your code signs in the app on your Home Screen. Typed in Safari, it would be used up.</div>`;
+  if (st.v==="B") body = `<div class="coach"><div class="top"><span>Step ${st.coach+1} of ${COACH.length}</span><span class="dots">${COACH.map((_,i)=>`<i class="${i<=st.coach?"on":""}"></i>`).join("")}</span></div>
+      <h3>${COACH[st.coach]}</h3><div class="pic">${MINI[st.coach]()}</div>
+      <div class="nav">${st.coach?`<button data-act="cback">Back</button>`:""}${st.coach<COACH.length-1?`<button class="pri" data-act="cnext">Next</button>`:""}</div></div>`;
+  if (st.v==="C") body = `<div class="film"><div class="pic">${MINI[st.film]()}<span class="tapdot" style="${["right:44px;top:66px","left:58px;top:74px","left:70px;top:98px","right:52px;top:108px","left:112px;top:70px"][st.film]}"></span></div>
+      <div class="prog">${COACH.map((_,i)=>`<i class="${i<=st.film?"on":""}"></i>`).join("")}</div><p>${COACH[st.film]}</p></div>`;
+  const oldField = st.sf==="shown" ? codeBox("sf") : "";
+  const intro = st.sf==="shown"
+    ? `<p style="margin:10px 0 0" class="note">First add Gwiazdki to your Home Screen: tap Share, then “Add to Home Screen”. Then open it from there and type your code.</p>`
+    : "";
+  return `<div class="jh"><small>Join Gwiazdki</small><h2>First, put Gwiazdki on your Home Screen</h2><p>It's an app you add from Safari, no App Store needed. Your code goes in once it's there.</p></div>
+    ${st.sf==="shown" ? intro + oldField : body}
+    <p class="already">Already added it? <b>Open Gwiazdki from your Home Screen.</b></p>
+    ${st.v==="B" && st.coach===0 && st.sf!=="shown" ? `<span class="arrowdn">${svg("down")}</span>` : ""}`;
+}
+function codeBox(where){
+  return `<form class="code" data-form="${where}"><label for="code-${where}">Code from your parent</label>
+    <input id="code-${where}" inputmode="text" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX" value="${st.input.length>4?fmt(st.input):st.input}">
+    ${st.err?`<p class="err">${st.err}</p>`:""}
+    <button class="cta" ${st.input.length<8?"disabled":""}>Join</button>
+    <button type="button" class="paste" data-act="paste">${svg("paste")} Paste the parent's code</button></form>`;
+}
+function appCode(){
+  return `<div class="page"><div class="wel" style="justify-content:flex-start;padding-top:40px;flex:none"><div class="logo" style="width:64px;height:64px;font-size:36px;border-radius:18px">${star()}</div></div>
+    <div class="jh" style="text-align:center"><h2>Type your code</h2><p>Ask your parent for a code in their app. It works once, for 15 minutes.</p></div>${codeBox("app")}</div>`;
+}
+function today(){
+  const tl = [["bed","Make the bed"],["sparkle","Tidy room"],["door","Leave on time"]];
+  return `<header><div class="who"><small>Monday 28 September</small><h1>Hey, Kuba</h1></div>
+    <button class="hbtn" aria-label="Your Contract" style="position:relative">${svg("doc")}<span style="position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:var(--acc)"></span></button><button class="hbtn">${svg("gear")}</button>
+    <button class="bal" style="--p:0"><b>${star()}0</b><small>gwiazdek</small></button></header>
+    <div class="youin"><b>You're in.</b>${st.sfSession?"(Safari is signed in too, from earlier.) ":""}Check off a Task when it's done. Your parent approves it.</div>
+    <div class="dh"><h2>Today</h2><span class="pill">0 / 3 done</span></div>
+    <div class="grid">${tl.map(([i,n])=>`<div class="tile not_done"><span class="ic">${svg(i)}</span><span class="bdg"></span><b>${n}</b><small>Not done yet</small></div>`).join("")}</div>`;
+}
+function home(){
+  return `<div class="home">${status()}<div class="icons">
+    ${["Messages","Camera","Photos","Music","Maps","Spotify"].map(n=>`<span class="ap"><i></i>${n}</span>`).join("")}
+    <button class="ap" data-act="safari"><i class="sf">◎</i>Safari</button>
+    ${st.installed?`<button class="ap ${st.added?"new":""}" data-act="openapp"><i class="gw">${star()}</i>Gwiazdki</button>`:""}</div>
+    <div class="hint">${st.installed?"Gwiazdki is on the Home Screen. Tap it to open the app.":"Tap Safari to go back to the page."}</div></div>`;
+}
+function overlay(){
+  if (st.ov==="menu") return `<div class="ios2" data-act="shut"><div class="menu"><button>Add Bookmark <span>☆</span></button><button class="go" data-act="share">Share <span>⇪</span></button><button>Find on Page <span>⌕</span></button><button>Reader <span>≡</span></button></div></div>`;
+  if (st.ov==="share") return `<div class="ios2" data-act="shut"><div class="sheet2"><div class="hd"><span class="ic" style="width:36px;height:36px;border-radius:9px;background:#0A0E1C;color:#FFC54D;display:grid;place-items:center;font-size:20px">${star()}</span><span><b>Gwiazdki</b>gwiazdka.vercel.app</span></div>
+    <div class="apps"><i></i><i></i><i></i><i></i></div><button>Copy <span>⧉</span></button><button>Add to Favourites <span>☆</span></button><button class="go" data-act="addhome">Add to Home Screen <span>⊞</span></button><button>Add Bookmark <span>☆</span></button></div></div>`;
+  if (st.ov==="add") return `<div class="ios2"><div class="add"><div class="nav"><button data-act="shut">Cancel</button><span>Add to Home Screen</span><button class="go" data-act="added">Add</button></div>
+    <div class="card"><i>${star()}</i><div><b>Gwiazdki</b>gwiazdka.vercel.app</div></div>
+    <div class="tog"><span>Open as Web App</span><i></i></div><small>An icon will be added to your Home Screen so you can quickly open this website.</small></div></div>`;
+  return "";
+}
+function signinParent(){
+  return `<div class="signin">${status(false)}<button class="back" data-go="sf-welcome">‹ Back</button><h1>Parent sign-in</h1>
+    <label>Email<input value="" placeholder="you@example.com"></label><label>Password<input type="password"></label><span class="pbtn">Sign in</span>
+    <p style="font-size:13px;color:#6B7280">The parent's app keeps its own look.</p></div>`;
+}
+function renderChild(){
+  const light = st.theme==="light" ? "light" : "";
+  if (st.stage==="home") return home();
+  if (st.stage==="sf-signin") return signinParent();
+  if (st.stage==="app-code") return `<div class="app ${light}" style="--acc:${ACC};min-height:100%">${status()}${appCode()}</div>`;
+  if (st.stage==="today") return `<div class="app ${light}" style="--acc:${ACC};min-height:100%">${status()}${today()}</div>`;
+  const inner = st.stage==="sf-welcome" ? welcome() : st.stage==="sf-safari-today" ? today() : joinSafari();
+  return `<div class="app safari ${light} ${st.ov?"lock":""}" style="--acc:${ACC};height:100%">${status()}<div class="page">${inner}</div>${safariBar()}${overlay()}</div>`;
+}
+
+/* ---------- parent ---------- */
+function qr(){
+  // A drawn stand-in, not a real QR code.
+  let s = 7, cells = "";
+  const rnd = () => (s = (s*9301+49297)%233280)/233280;
+  const n = 25, fin = (x,y) => `<rect x="${x}" y="${y}" width="7" height="7" fill="#111"/><rect x="${x+1}" y="${y+1}" width="5" height="5" fill="#fff"/><rect x="${x+2}" y="${y+2}" width="3" height="3" fill="#111"/>`;
+  for (let y=0;y<n;y++) for (let x=0;x<n;x++){ if ((x<8&&y<8)||(x>16&&y<8)||(x<8&&y>16)) continue; if (rnd()>.52) cells += `<rect x="${x}" y="${y}" width="1" height="1" fill="#111"/>`; }
+  return `<svg class="qr" viewBox="0 0 25 25" shape-rendering="crispEdges" aria-label="QR code that opens the join page">${cells}${fin(0,0)}${fin(18,0)}${fin(0,18)}</svg>`;
+}
+const mmss = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+function codeLine(){
+  if (st.codeState==="used") return `<div class="big used"><b>${fmt(st.code)}</b><span>✓ Used. Kuba's ${st.lastUse==="safari"?"Safari":"phone"} is connected.</span></div>`;
+  if (st.codeState==="expired") return `<div class="big exp"><b>${fmt(st.code)}</b><span>Expired. Get a new code.</span></div>`;
+  return `<div class="big"><b>${fmt(st.code)}</b><span>Works once · ${mmss(st.codeLeft)} left</span></div>`;
+}
+function renderParent(){
+  let kid;
+  if (st.pv==="inline"){
+    kid = st.code ? `<p class="inl">Code: <b>${fmt(st.code)}</b> (works once, for 15 minutes)${st.codeState!=="active"?` <span class="muted">· ${st.codeState}</span>`:""}</p>` : `<button class="askl" data-act="issue" style="text-decoration:underline">Connect a device (Join code)</button>`;
+  } else kid = `<button class="cd" data-act="issue">${svg0("phone")} Connect Kuba's phone</button>`;
+  const sheet = st.pv==="sheet" && st.psheet ? `<div class="pscrim" data-act="pshut"><div class="psheet"><div class="grab"></div><h3>Connect Kuba's phone</h3>${codeLine()}
+    <div class="qrrow">${qr()}<ol><li>On Kuba's iPhone, scan this with the Camera, or open <b>gwiazdka.vercel.app</b> in Safari.</li><li>Add Gwiazdki to the Home Screen (the page shows how).</li><li>Open it from the Home Screen and type the code.</li></ol></div>
+    <div class="acts"><button data-act="issue2">New code</button><button class="pri" data-act="pshut">Done</button></div></div></div>` : "";
+  return `<div class="ph"><h1>Inbox</h1><button class="lnk">Contracts</button><span class="wpill">0 waiting</span></div>
+    <section class="kid"><div class="kh"><h2>Kuba</h2><div class="m">0 ★ · 0,00 zł</div></div>${kid}
+      <div class="pc"><div class="fold"><span class="n">Nothing waiting</span></div></div></section>${sheet}`;
+}
+const svg0 = k => `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+function issue(){
+  st.code = newCode(); st.codeLeft = 15*60; st.codeState = "active"; st.psheet = true;
+  log(`Parent gets code ${fmt(st.code)} (15 minutes)`);
+}
+
+/* ---------- join ---------- */
+function submit(where){
+  const c = st.input;
+  if (!st.code || c!==st.code || st.codeState!=="active"){ st.err = "That code doesn't work. Ask your parent for a new one."; log(`Kuba types ${fmt(c)} in ${where==="sf"?"Safari":"the app"}: refused`); return; }
+  st.codeState = "used"; st.lastUse = where==="sf"?"safari":"app"; st.err = null; st.input = "";
+  if (where==="sf"){ st.sfSession = true; st.stage = "sf-safari-today"; log("Code used in Safari: Safari is signed in, the Home Screen app is not"); }
+  else { st.appSession = true; st.stage = "today"; log("Code used in the Home Screen app: Kuba is in, and stays signed in"); }
+}
+
+/* ---------- panels + render ---------- */
+function seg(el, items, cur, on){
+  el.innerHTML = items.map(([k,l])=>`<button aria-pressed="${k===cur}" data-k="${k}">${l}</button>`).join("");
+  el.onclick = e => { const b = e.target.closest("button"); if (b) on(b.dataset.k); };
+}
+const STAGE = {"sf-welcome":"Safari: welcome", "sf-join":"Safari: join page", "sf-signin":"Safari: parent sign-in", "sf-safari-today":"Safari: signed in", home:"Home Screen", "app-code":"Home Screen app: code", today:"Home Screen app: Today"};
+function render(){
+  const cs = document.getElementById("cscr"), ps = document.getElementById("pscr");
+  const focused = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("code-") ? document.activeElement.id : null;
+  cs.innerHTML = renderChild();
+  if (focused){ const i = document.getElementById(focused); if (i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } }
+  ps.innerHTML = `<div class="par ${st.psheet?"lock":""}"><div class="status"><span>16:05</span><span>●●● Wi-Fi</span></div>${renderParent()}</div>`;
+  const v = VARS[st.v];
+  document.getElementById("lbl").innerHTML = `${st.v} <small>(${v.name})</small>`;
+  seg(document.getElementById("vSeg"), ORDER.map(k=>[k,`${k} ${VARS[k].name}`]), st.v, k=>{ st.v=k; st.coach=0; render(); });
+  seg(document.getElementById("pSeg"), [["sheet","Sheet with QR (proposed)"],["inline","Inline link (today)"]], st.pv, k=>{ st.pv=k; st.psheet=false; render(); });
+  seg(document.getElementById("sfSeg"), [["hidden","Hidden (proposed)"],["shown","Shown (today)"]], st.sf, k=>{ st.sf=k; render(); });
+  seg(document.getElementById("themeSeg"), [["dark","Dark"],["light","Light"]], st.theme, k=>{ st.theme=k; render(); });
+  document.getElementById("help").innerHTML = `<button data-h="skip">Skip to: app on Home Screen</button><button data-h="expire">Let the code expire</button>`;
+  document.getElementById("sPanel").innerHTML = `<h2>State</h2><dl class="kv"><dt>Kuba's screen</dt><dd>${STAGE[st.stage]}</dd><dt>On Home Screen</dt><dd>${st.installed?"yes":"no"}</dd>
+    <dt>Signed in</dt><dd>${st.appSession?"Home Screen app":st.sfSession?"Safari only (app still needs a code)":"nowhere"}</dd>
+    <dt>Code</dt><dd>${st.code?`${fmt(st.code)} · ${st.codeState}${st.codeState==="active"?` · ${mmss(st.codeLeft)}`:""}`:"none yet"}</dd></dl>`;
+  document.getElementById("lPanel").innerHTML = `<h2>What happened</h2>${st.log.length?`<ol class="log" reversed>${st.log.map(l=>`<li>${l}</li>`).join("")}</ol>`:`<p>Nothing yet. Start with “I have a code from my parent” on Kuba's phone.</p>`}`;
+  document.getElementById("pAbout").innerHTML = st.pv==="sheet"
+    ? `<h2>Parent · sheet with QR (proposed)</h2><ul><li><b>Connect Kuba's phone</b> opens a sheet: the code in large type with a live countdown, a <b>QR code</b> that opens the join page on Kuba's iPhone camera, and three steps to read out.</li><li>It turns green once the code is used, and offers <b>New code</b> when it expires. The QR here is a drawn stand-in.</li></ul>`
+    : `<h2>Parent · inline link (today)</h2><ul><li>A small link under the child's name shows the code in the line. There's no countdown, no link for Kuba's phone, and no sign the code worked.</li></ul>`;
+  document.getElementById("vAbout").innerHTML = `<h2>Walkthrough ${st.v} · ${v.name}</h2><ul>${v.about.map(x=>`<li>${x}</li>`).join("")}</ul>`;
+}
+function setInput(val){ st.input = clean(val); st.err = null; }
+document.getElementById("cscr").addEventListener("input", e => {
+  if (!e.target.id?.startsWith("code-")) return;
+  setInput(e.target.value); render();
+});
+document.getElementById("cscr").addEventListener("submit", e => {
+  e.preventDefault(); submit(e.target.dataset.form); render();
+});
+document.getElementById("cscr").addEventListener("click", e => {
+  const el = e.target.closest("[data-act],[data-go]");
+  if (!el) return;
+  const d = el.dataset;
+  if (d.go){ st.stage = d.go; st.err = null; if (d.go==="sf-join") log("Kuba opens the join page in Safari"); }
+  else if (d.act==="menu") st.ov = "menu";
+  else if (d.act==="share"){ e.stopPropagation(); st.ov = "share"; }
+  else if (d.act==="addhome"){ e.stopPropagation(); st.ov = "add"; }
+  else if (d.act==="added"){ st.ov = null; st.installed = true; st.added = true; st.stage = "home"; log("Kuba adds Gwiazdki to the Home Screen"); }
+  else if (d.act==="shut"){ if (e.target!==el) return; st.ov = null; }
+  else if (d.act==="openapp"){ st.added = false; st.stage = st.appSession ? "today" : "app-code"; st.input = ""; st.err = null; log("Kuba opens Gwiazdki from the Home Screen"); }
+  else if (d.act==="safari"){ st.stage = st.sfSession ? "sf-safari-today" : "sf-join"; }
+  else if (d.act==="cnext") st.coach = Math.min(COACH.length-1, st.coach+1);
+  else if (d.act==="cback") st.coach = Math.max(0, st.coach-1);
+  else if (d.act==="paste"){ if (st.code) setInput(st.code); else st.err = "Nothing to paste yet: the parent hasn't made a code."; }
+  render();
+});
+document.getElementById("pscr").addEventListener("click", e => {
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const a = el.dataset.act;
+  if (a==="issue"){ if (st.pv==="sheet" && st.code && st.codeState==="active") st.psheet = true; else issue(); }
+  else if (a==="issue2") issue();
+  else if (a==="pshut"){ if (e.target!==el && el.classList.contains("pscrim")) return; st.psheet = false; }
+  render();
+});
+document.getElementById("help").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.h==="skip"){ st.installed = true; st.ov = null; st.stage = "app-code"; st.input=""; st.err=null; log("Skipped ahead: Gwiazdki is on the Home Screen and open"); }
+  if (b.dataset.h==="expire" && st.code && st.codeState==="active"){ st.codeState = "expired"; log(`Code ${fmt(st.code)} expires`); }
+  render();
+});
+const typing = () => document.activeElement && document.activeElement.id?.startsWith("code-");
+function refreshParent(){
+  document.getElementById("pscr").innerHTML = `<div class="par ${st.psheet?"lock":""}"><div class="status"><span>16:05</span><span>●●● Wi-Fi</span></div>${renderParent()}</div>`;
+}
+// The code counts down in real seconds; only the parent's phone redraws, so typing on Kuba's is undisturbed.
+setInterval(() => {
+  if (!st.code || st.codeState!=="active") return;
+  st.codeLeft--;
+  if (st.codeLeft<=0){ st.codeState="expired"; log(`Code ${fmt(st.code)} expires`); render(); } else refreshParent();
+}, 1000);
+// Walkthrough C's clip moves on every 1.8 seconds.
+setInterval(() => {
+  if (st.v!=="C" || st.stage!=="sf-join" || st.sf==="shown" || st.ov || typing()) return;
+  st.film = (st.film+1) % COACH.length; render();
+}, 1800);
+function cycle(n){ const i = ORDER.indexOf(st.v); st.v = ORDER[(i+n+ORDER.length)%ORDER.length]; st.coach = 0; render(); }
+document.getElementById("prev").onclick = () => cycle(-1);
+document.getElementById("next").onclick = () => cycle(1);
+document.addEventListener("keydown", e => { if (e.target.closest("input")) return; if (e.key==="ArrowLeft") cycle(-1); if (e.key==="ArrowRight") cycle(1); });
+document.getElementById("reset").onclick = () => { st = fresh({v:st.v, pv:st.pv, sf:st.sf, theme:st.theme}); render(); };
+render();
+</script>
