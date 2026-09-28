@@ -6,6 +6,7 @@ import {
   schoolWeek,
   starsWord,
   taskState,
+  warsawTime,
   warsawToday,
 } from "./today";
 
@@ -18,6 +19,13 @@ describe("warsawToday", () => {
   });
   it("has already moved on in Warsaw at 23:30 UTC", () => {
     expect(warsawToday(new Date("2026-09-23T22:30:00Z"))).toBe("2026-09-24");
+  });
+});
+
+describe("warsawTime", () => {
+  it("shows the hour and minute in Warsaw", () => {
+    expect(warsawTime("2026-09-23T05:31:00Z")).toBe("07:31");
+    expect(warsawTime("2026-12-01T21:05:00Z")).toBe("22:05");
   });
 });
 

@@ -9,6 +9,7 @@ import { RECAP_HIDDEN_COOKIE } from "@/lib/recap";
 import { addDays, dayDone, formatPln, starsWord, type TaskState } from "@/lib/today";
 import { dayMonth, mondayOf, weekRange, weekTitle } from "@/lib/weeks";
 import { setCheckOff } from "./actions";
+import { DayPhotoCard } from "./day-photo";
 import { LookButton } from "./look";
 import { Star, STAR_PATH } from "./star";
 import { TaskIcon } from "./task-icon";
@@ -411,6 +412,7 @@ function DayTasks({
           />
         ))}
       </div>
+      <DayPhotoCard day={selected.day} photo={selected.photo} canChange={selected.canChange} />
     </>
   );
 }

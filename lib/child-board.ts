@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { dayPhotoPath, signDayPhotos, type DayPhoto } from "./day-photos";
 import {
   canChildChange,
   dayDone,
@@ -61,8 +62,15 @@ export type Board = {
   bonus: WeekBonus | null;
   // Shown only on the current week: from Monday last week, from Friday this week.
   recap: Recap | null;
-  // The day shown under the week strip, or null for the weekend card.
-  selected: { day: string; canChange: boolean; contract: DayContract; tasks: BoardTask[] } | null;
+  // The day shown under the week strip, or null for the weekend card. Its
+  // photo can be added, replaced or removed while the day can be changed.
+  selected: {
+    day: string;
+    canChange: boolean;
+    contract: DayContract;
+    tasks: BoardTask[];
+    photo: DayPhoto | null;
+  } | null;
   // On a weekend: Friday, if it can still be changed, and how many of its Tasks are not done.
   openFriday: { day: string; left: number } | null;
 };
@@ -122,11 +130,18 @@ export async function loadBoard(
   // The current week also shows the recap, which may cover last week.
   const from = thisWeek ? recapMonday(today) : monday;
 
-  const [checkOffs, approvals] = await Promise.all([
+  const [checkOffs, approvals, photoRows] = await Promise.all([
     supabase.from("check_offs").select("task_id, day").gte("day", from).lte("day", week[4]),
     supabase.from("approvals").select("task_id, day, approved").gte("day", from).lte("day", week[4]),
+    // The shown day's photo; the weekend card has none.
+    supabase
+      .from("day_photos")
+      .select("child_id, day, added_at")
+      .eq("child_id", childId)
+      .eq("day", shown ?? week[4]),
   ]);
-  for (const r of [checkOffs, approvals]) if (r.error) throw r.error;
+  for (const r of [checkOffs, approvals, photoRows]) if (r.error) throw r.error;
+  const photos = await signDayPhotos(supabase, shown ? photoRows.data! : []);
 
   const open = (contracts.data as ContractRow[]).find((c) => c.closed_on === null);
   const paidOn = new Map(payouts.data!.map((p) => [p.contract_id as string, p.paid_on as string]));
@@ -224,6 +239,7 @@ export async function loadBoard(
           canChange: inOpenContract(shown) && canChildChange(shown, now),
           contract: contractOn(shown),
           tasks: tasksOn(shown),
+          photo: photos.get(dayPhotoPath(childId, shown)) ?? null,
         }
       : null,
     openFriday,
