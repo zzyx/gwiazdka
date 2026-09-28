@@ -1,0 +1,667 @@
+<title>Gwiazdki Offline Check-offs</title>
+<!--
+  PROTOTYPE, throwaway. Answers zzyx/gwiazdka#54: what does a teen (13 to 17) see while Check-offs
+  made with no connection wait on the phone, and who wins when they finally arrive?
+  Two phones share one in-memory model: Kuba's Midnight Today screen on the left, the parent's Inbox
+  (its current look) on the right. The parent's phone is always online. Under the phones, the state
+  panel shows Kuba's queue next to what the server holds.
+  Teen layouts (floating bar or ← →):
+    A  Quiet: queued tiles say "Sends when online", a small Offline line in the header
+    B  Banner: a card above the week strip counts what's saved on the phone
+    C  Outbox: a floating "n to send" pill opens a list of each queued change and what became of it
+  Late-arrival rule (switch): a Check-off tapped before its deadline but sent after it counts by tap
+  time (recommended) or by arrival time (today's database rule).
+  iOS has no background sync, so the queue only sends while the app is open with a connection.
+  Sample data is made up.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --bg:#EEF0F5; --panel:#FFFFFF; --ink:#1C2030; --muted:#5B6278; --line:#D9DDE7;
+  --accent:#2F5BEA; --chip:#E4E8F3; --bar:#141824; --bar-ink:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#12141B; --panel:#1C1F2A; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+    --accent:#8FA8FF; --chip:#262B3A; --bar:#F1F3F9; --bar-ink:#12141B;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#12141B; --panel:#1C1F2A; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+  --accent:#8FA8FF; --chip:#262B3A; --bar:#F1F3F9; --bar-ink:#12141B;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:Figtree,system-ui,-apple-system,sans-serif;font-size:14px;padding-inline:16px;padding-block:20px 96px;margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.intro{display:flex;flex-direction:column;gap:12px}
+.intro h1{font-size:24px;line-height:1.2;margin:0;text-wrap:balance}
+.intro p{margin:0;color:var(--muted);line-height:1.5}
+.ctl{display:flex;flex-direction:column;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ctl-row>span{width:84px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.seg{display:inline-flex;background:var(--chip);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:8px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.sw{display:inline-flex;gap:6px}
+.sw button{width:26px;height:26px;border-radius:50%;border:2px solid transparent;padding:0}
+.sw button[aria-pressed="true"]{border-color:var(--ink)}
+.reset{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 12px;font-weight:600}
+.abouts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.about{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.about h2{margin:0;font-size:15px}
+.about ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;color:var(--muted);line-height:1.45}
+.about p{margin:0;color:var(--muted);line-height:1.45}
+.about b{color:var(--ink)}
+.phones{display:flex;gap:28px;justify-content:center;flex-wrap:wrap}
+.pcol{display:flex;flex-direction:column;gap:8px;align-items:center;max-width:100%}
+.pcol>h3{margin:0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.phone{width:380px;max-width:100%;height:760px;border-radius:44px;border:10px solid #0D0F16;background:#0D0F16;overflow:hidden;position:relative;box-shadow:0 20px 50px rgba(20,24,40,.25)}
+.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;border-radius:34px}
+@media (max-width:980px){ .top{grid-template-columns:1fr} .abouts{grid-template-columns:1fr} }
+@media (max-width:480px){
+  body{padding-inline:8px}
+  .switcher .lbl small{display:none}
+  .phone{border-width:0;border-radius:18px;height:720px;box-shadow:none}
+  .screen{border-radius:18px}
+}
+.switcher{position:fixed;left:50%;transform:translateX(-50%);bottom:0;margin-bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;align-items:center;gap:4px;background:var(--bar);color:var(--bar-ink);border-radius:999px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:calc(100% - 24px)}
+.switcher button{border:0;background:transparent;color:inherit;width:40px;height:40px;border-radius:50%;font-size:18px;flex:none}
+.switcher button:hover{background:rgba(127,127,127,.25)}
+.switcher .lbl{padding:0 10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.switcher .lbl small{opacity:.65;font-weight:500}
+.status{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font:600 14px Figtree,system-ui,sans-serif}
+
+/* ============ CHILD (Midnight, as shipped) ============ */
+.app{--bgB:#0A0E1C;--cardB:#141A2E;--card2B:#1B2340;--inkB:#EEF1FF;--mutB:#8A93B8;--lineB:#252E4D;--acc:#FFC54D;--accInk:var(--acc);--wait:#7FA7FF;
+  min-height:100%;padding-bottom:36px;position:relative;
+  background:radial-gradient(120% 50% at 85% -10%,color-mix(in srgb,var(--acc) 14%,transparent),transparent 60%),var(--bgB);
+  color:var(--inkB);font-family:Sora,system-ui,sans-serif;color-scheme:dark}
+.app.light{--bgB:#EEF0F7;--cardB:#FFFFFF;--card2B:#F4F5FA;--inkB:#10142A;--mutB:#5E6688;--lineB:#DCE0EE;--wait:#3867E0;--accInk:color-mix(in oklab,var(--acc),#10142A 45%);color-scheme:light}
+.app.lock{height:100%;overflow:hidden}
+.app svg.i{width:1em;height:1em;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.app svg.st{width:1em;height:1em;display:inline-block;vertical-align:-.12em;flex:none}
+.app button{border:0;background:none;padding:0;text-align:left}
+.app header{padding:6px 20px 16px;display:flex;align-items:center;gap:12px}
+.who{flex:1;min-width:0}
+.who small{display:block;font-size:12px;color:var(--mutB)}
+.who h1{margin:2px 0 0;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.hbtn{width:36px;height:36px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;color:var(--mutB);font-size:17px;position:relative;flex:none}
+.bal{display:flex!important;flex-direction:column;align-items:center;justify-content:center;width:96px;height:96px;border-radius:50%;background:var(--cardB)!important;border:1px solid var(--lineB)!important;position:relative;flex:none}
+.bal::before{content:"";position:absolute;inset:-1px;border-radius:50%;background:conic-gradient(var(--acc) calc(var(--p)*1%),transparent 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))}
+.bal b{font-size:26px;font-weight:800;color:var(--accInk);display:flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums;line-height:1}
+.bal small{font-size:10px;color:var(--mutB);margin-top:3px}
+.wbar{display:flex;align-items:center;gap:8px;padding:0 16px 10px}
+.wbar .t{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center}
+.wbar .t b{font-size:15px;font-weight:700}
+.wbar .t small{font-size:12px;color:var(--mutB)}
+.arrow{width:36px;height:36px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;font-size:17px;flex:none}
+.arrow:disabled{opacity:.3;cursor:default}
+.week{display:flex;gap:6px;padding:0 16px 18px}
+.wd{flex:1;display:flex!important;flex-direction:column;align-items:center;gap:6px;padding:10px 0!important;border-radius:16px;background:var(--cardB)!important;border:1px solid var(--lineB)!important;position:relative;cursor:pointer;text-align:center!important}
+.wd .l{font-size:11px;color:var(--mutB);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.wd .n{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;height:22px;display:grid;place-items:center}
+.wd .pips{display:flex;gap:2px;height:12px;align-items:center}
+.wd .pips i{width:5px;height:5px;border-radius:50%;background:var(--lineB)}
+.wd .pips i.on{background:var(--acc)}
+.wd.today{border-color:var(--accInk)!important}
+.wd.sel{background:var(--inkB)!important;color:var(--bgB);border-color:var(--inkB)!important}
+.wd.sel .l{color:color-mix(in srgb,var(--bgB) 60%,transparent)}
+.wd.sel .pips i:not(.on){background:color-mix(in srgb,var(--mutB) 50%,transparent)}
+.wd.fut{opacity:.35;cursor:default}
+.wd .dot{position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:var(--wait);border:2px solid var(--bgB)}
+.dh{display:flex;align-items:center;gap:10px;padding:0 20px 12px}
+.dh h2{margin:0;font-size:18px;font-weight:700;flex:1;min-width:0}
+.dh h2 small{font-size:13px;font-weight:500;color:var(--mutB);margin-left:6px}
+.pill{font-size:12px;color:var(--mutB);background:var(--cardB);border:1px solid var(--lineB);border-radius:999px;padding:4px 10px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.note{margin:0 16px 12px;padding:11px 14px;border-radius:14px;font-size:13px;line-height:1.45;background:var(--cardB);border:1px solid var(--lineB);color:var(--mutB);display:flex;gap:10px;align-items:center}
+.note.ask{border-color:color-mix(in srgb,var(--acc) 55%,transparent);background:color-mix(in srgb,var(--acc) 10%,var(--cardB));color:var(--inkB)}
+.note.ask svg{color:var(--accInk);font-size:18px}
+.note.ask .go{margin-left:auto;border-radius:10px!important;background:var(--acc)!important;color:#1A1405;font-weight:700;padding:7px 11px!important;font-size:12px;white-space:nowrap}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
+.tile{position:relative;display:flex!important;flex-direction:column;gap:14px;min-height:118px;padding:14px!important;border-radius:20px;background:var(--cardB)!important;border:1px solid var(--lineB)!important;cursor:pointer}
+.tile[data-locked]{cursor:default}
+.tile .ic{font-size:22px;color:var(--mutB)}
+.tile b{font-size:15px;font-weight:600;line-height:1.25}
+.tile small{margin-top:auto;font-size:12px;color:var(--mutB);display:flex;align-items:center;gap:5px}
+.tile .bdg{position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;border:1.5px solid var(--lineB)}
+.tile.checked_off{border-color:color-mix(in srgb,var(--wait) 60%,transparent)!important;background:color-mix(in srgb,var(--wait) 10%,var(--cardB))!important}
+.tile.checked_off .ic,.tile.checked_off small{color:var(--wait)}
+.tile.checked_off .bdg{background:var(--wait);border-color:var(--wait);color:var(--bgB)}
+.tile.approved{border-color:color-mix(in srgb,var(--acc) 55%,transparent)!important;background:color-mix(in srgb,var(--acc) 9%,var(--cardB))!important}
+.tile.approved .ic,.tile.approved small{color:var(--accInk)}
+.tile.approved .bdg{background:var(--acc);border-color:var(--acc);color:#1A1405}
+.tile.rejected b{text-decoration:line-through;color:var(--mutB)}
+.tile.rejected{opacity:.75}
+.tile.hasc small{padding-right:40px}
+.wtot{margin:20px 16px 0;padding:14px 16px;border-radius:20px;border:1px solid var(--lineB);background:var(--cardB);display:flex;justify-content:space-between;align-items:baseline}
+.wtot b{font-size:15px}
+.wtot em{font-style:normal;font-size:22px;font-weight:800;color:var(--accInk);display:flex;gap:4px;align-items:center}
+
+/* A: photo card */
+.pcard{margin:14px 16px 0;border-radius:20px;border:1.5px dashed var(--lineB)!important;background:transparent;display:flex!important;align-items:center;gap:14px;padding:16px!important;width:calc(100% - 32px);cursor:pointer}
+.pcard .cam{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--card2B);color:var(--accInk);font-size:21px;flex:none}
+.pcard div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.pcard b{font-size:15px;font-weight:600}
+.pcard small{font-size:12px;color:var(--mutB);line-height:1.4}
+.pcard.asked{border-style:solid!important;border-color:color-mix(in srgb,var(--acc) 60%,transparent)!important}
+.pfull{margin:14px 16px 0;border-radius:20px;overflow:hidden;border:1px solid var(--lineB);background:var(--cardB)}
+.pfull .img{display:block!important;width:100%;aspect-ratio:4/3;background:#000 center/cover no-repeat;position:relative}
+.pfull .bar{display:flex;align-items:center;gap:10px;padding:10px 14px}
+.pfull .bar span{flex:1;font-size:12px;color:var(--mutB);display:flex;gap:6px;align-items:center}
+.pfull .bar button{font-size:13px;font-weight:600;color:var(--accInk);padding:4px 2px!important}
+.pfull .bar button.rm{color:var(--mutB)}
+.up{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,14,28,.55);color:#fff;font:600 13px Sora,system-ui,sans-serif}
+.up i{display:block;width:60%;height:4px;border-radius:2px;background:rgba(255,255,255,.25);overflow:hidden;margin-top:8px}
+.up i::after{content:"";display:block;height:100%;width:40%;background:var(--acc);animation:load .9s ease-in-out forwards}
+@keyframes load{to{width:100%}}
+
+/* B: camera in the day header */
+.dcam{width:36px;height:36px;border-radius:50%;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--cardB)!important;color:var(--mutB);font-size:17px;flex:none;position:relative}
+.dcam.asked{border-color:var(--acc)!important;color:var(--accInk);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 22%,transparent)}
+.dthumb{width:36px;height:36px;border-radius:50%;flex:none;background-color:#000!important;background-position:center;background-size:cover;background-repeat:no-repeat;border:2px solid var(--acc)!important;position:relative}
+.dthumb .spin{position:absolute;inset:-2px;border-radius:50%;border:2px solid transparent;border-top-color:#fff;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wd .cm{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:var(--bgB);display:grid;place-items:center;font-size:10px;color:var(--mutB)}
+.wd.sel .cm{background:var(--inkB);color:var(--bgB)}
+
+/* C: photo on a Task */
+.tcam{position:absolute;right:10px;bottom:10px;width:30px;height:30px;border-radius:10px;display:grid!important;place-items:center;border:1px solid var(--lineB)!important;background:var(--card2B)!important;color:var(--mutB);font-size:15px;z-index:2}
+.tcam.asked{border-color:var(--acc)!important;color:var(--accInk)}
+.tthumb{position:absolute;right:10px;bottom:10px;width:38px;height:38px;border-radius:10px;background-color:#000!important;background-position:center;background-size:cover;background-repeat:no-repeat;border:2px solid var(--cardB)!important;box-shadow:0 0 0 1.5px var(--acc);z-index:2}
+
+/* teen: action sheet + viewer */
+.scrim{position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.45);display:flex;flex-direction:column;justify-content:flex-end;padding:10px}
+.ios{background:rgba(245,245,247,.97);border-radius:14px;overflow:hidden;font:400 17px Figtree,-apple-system,system-ui,sans-serif;color:#0A84FF;margin-bottom:8px}
+.ios button{display:flex!important;justify-content:space-between;align-items:center;width:100%;padding:14px 18px!important;border-top:1px solid rgba(0,0,0,.12)!important;text-align:left;color:#0A84FF}
+.ios button:first-child{border-top:0!important}
+.ios button small{color:#8E8E93;font-size:13px}
+.ios.cancel button{justify-content:center;font-weight:600}
+.ios .cap{padding:10px 18px;font-size:13px;color:#8E8E93;text-align:center;border-bottom:1px solid rgba(0,0,0,.12)}
+.viewer{position:absolute;inset:0;z-index:30;background:#000;display:flex;flex-direction:column;color:#fff;font-family:Sora,system-ui,sans-serif}
+.viewer .vt{display:flex;align-items:center;justify-content:space-between;padding:52px 18px 12px;font-size:13px}
+.viewer .vt b{font-size:15px;display:block}
+.viewer .vt small{opacity:.7}
+.viewer .vt button,.viewer .va button{color:#fff}
+.viewer .vimg{flex:1;background:center/contain no-repeat}
+.viewer .va{display:flex;gap:10px;padding:14px 18px 30px}
+.viewer .va button{flex:1;text-align:center!important;border-radius:14px!important;padding:13px!important;font-weight:700;background:rgba(255,255,255,.14)!important}
+.viewer .va button.pri{background:var(--acc)!important;color:#1A1405}
+.viewer .va p{margin:0;flex:1;text-align:center;font-size:12px;opacity:.7}
+.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;padding:11px 16px;border-radius:999px;background:var(--inkB);color:var(--bgB);font:600 13px Sora,system-ui,sans-serif;white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.35);animation:toast 2.6s ease forwards;display:flex;gap:8px;align-items:center}
+@keyframes toast{0%{opacity:0;transform:translate(-50%,10px)}10%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
+
+/* ============ PARENT (as shipped: Inbox by child, Figtree, white cards) ============ */
+.par{min-height:100%;background:#F6F7F9;color:#1F2430;font-family:Figtree,system-ui,sans-serif;font-size:15px;padding-bottom:30px;color-scheme:light;position:relative}
+.par.lock{height:100%;overflow:hidden}
+.par button{border:0;background:none;padding:0;text-align:left}
+.ph{display:flex;align-items:center;gap:10px;padding:4px 16px 14px}
+.ph h1{margin:0;font-size:24px;font-weight:700;flex:1}
+.ph .lnk{color:#2563EB;font-size:14px}
+.wpill{border-radius:999px;padding:4px 12px;font-size:14px;font-weight:700;background:#E5E7EB;color:#6B7280}
+.wpill.on{background:#2563EB;color:#fff}
+.kid{display:flex;flex-direction:column;gap:10px;padding:0 16px 22px}
+.kh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.kh h2{margin:0;font-size:20px;font-weight:700}
+.kh .m{font-size:14px;font-weight:600;display:flex;gap:6px;align-items:center}
+.amb{border-radius:999px;background:#FEF3C7;color:#92400E;font-weight:700;padding:2px 8px;font-size:13px}
+.pc{background:#fff;border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.06);overflow:hidden}
+.pc .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid #E5E7EB}
+.pc .hd h3{margin:0;font-size:15px;font-weight:700}
+.pc .hd p{margin:1px 0 0;font-size:12px;color:#6B7280}
+.pbtn{border-radius:8px!important;background:#2563EB!important;color:#fff;font-weight:700;padding:8px 12px!important;font-size:14px;white-space:nowrap}
+.prow{display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid #F0F1F3;font-size:14px;min-height:46px}
+.prow:first-child{border-top:0}
+.prow .e{font-size:20px}
+.prow .n{flex:1}
+.prow .ok{color:#15803D;font-weight:600}
+.prow .no{color:#B91C1C;font-weight:600}
+.prow .wt{color:#92400E;font-weight:600;font-size:13px}
+.prow .dec{display:flex;gap:6px}
+.prow .dec button{width:32px;height:32px;border-radius:8px;border:1px solid #D1D5DB!important;display:grid;place-items:center;font-weight:700}
+.prow .dec button.y{color:#15803D}
+.prow .dec button.x{color:#B91C1C}
+.muted{color:#6B7280}
+.pthumbs{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #F0F1F3}
+.pthumbs .th{width:72px;height:54px;border-radius:8px;background-color:#ddd;background-position:center;background-size:cover;background-repeat:no-repeat;flex:none}
+.pthumbs span{font-size:13px;color:#6B7280;line-height:1.35}
+.pthumbs span b{color:#1F2430;display:block;font-size:14px}
+.rth{width:34px;height:34px;border-radius:7px;background-color:#ddd;background-position:center;background-size:cover;background-repeat:no-repeat;flex:none;box-shadow:0 0 0 1px #E5E7EB}
+.askl{color:#2563EB!important;font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px}
+.asked{font-size:13px;color:#92400E;font-weight:600}
+.pbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 16px;border-bottom:1px solid #F0F1F3;font-size:13px;color:#6B7280}
+.fold{display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid #E5E7EB;font-size:14px}
+.fold:first-child{border-top:0}
+.fold .n{flex:1}
+.fold .s{color:#6B7280}
+.fold .rth{width:28px;height:28px}
+.pv{position:absolute;inset:0;z-index:30;background:#000;display:flex;flex-direction:column;color:#fff}
+.pv .vt{display:flex;align-items:center;justify-content:space-between;padding:52px 16px 12px;font-size:13px}
+.pv .vt b{display:block;font-size:15px}
+.pv .vt small{opacity:.7}
+.pv .vt button{color:#fff;font-size:15px}
+.pv .vimg{flex:1;background:center/contain no-repeat}
+.pv .strip{display:flex;gap:6px;justify-content:center;padding:10px}
+.pv .strip button{width:40px;height:40px;border-radius:6px;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:.5}
+.pv .strip button.on{opacity:1;outline:2px solid #fff}
+.pv .va{display:flex;gap:10px;padding:12px 16px 28px;align-items:center}
+.pv .va p{margin:0;flex:1;font-size:13px;opacity:.8}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ============ this prototype ============ */
+.ctl-row>span{width:96px}
+.scen{display:flex;flex-wrap:wrap;gap:8px}
+.scen button{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:7px 12px;font-weight:600;text-align:left}
+.scen button[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+.try{background:color-mix(in srgb,var(--accent) 10%,var(--panel));border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));border-radius:12px;padding:12px 14px;line-height:1.5}
+.try:empty{display:none}
+.state{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.state .about table{border-collapse:collapse;width:100%;font-size:13px}
+.state .about td,.state .about th{padding:5px 6px;border-top:1px solid var(--line);text-align:left;vertical-align:top}
+.state .about th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-top:0}
+.tag{display:inline-block;border-radius:6px;padding:1px 6px;font-size:12px;font-weight:700;background:var(--chip)}
+.tag.W{background:#DBEAFE;color:#1E40AF}.tag.A{background:#FEF3C7;color:#92400E}.tag.R{background:#FEE2E2;color:#991B1B}
+.tag.sent{background:#DCFCE7;color:#166534}.tag.drop{background:#FEE2E2;color:#991B1B}.tag.q{background:#E0E7FF;color:#3730A3}
+.log{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;color:var(--muted);font-size:13px;line-height:1.4;max-height:220px;overflow:auto}
+@media (max-width:980px){ .state{grid-template-columns:1fr} }
+
+.app .toast{pointer-events:none;bottom:78px}
+.who .off{display:flex;align-items:center;gap:5px;margin-top:4px;font-size:12px;color:var(--mutB)}
+.who .off svg{color:var(--wait)}
+.tile.q{border-style:dashed!important}
+.tile.q .bdg{background:transparent!important;color:var(--wait);border-color:var(--wait)!important}
+.banner{margin:0 16px 14px;padding:12px 14px;border-radius:16px;border:1px solid var(--lineB);background:var(--cardB);display:flex;gap:12px;align-items:flex-start;font-size:13px;line-height:1.45}
+.banner .bi{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;background:var(--card2B);color:var(--wait);font-size:18px;flex:none}
+.banner b{display:block;font-size:14px;color:var(--inkB)}
+.banner span{color:var(--mutB)}
+.banner.ok .bi{color:var(--accInk)}
+.banner.warn{border-color:color-mix(in srgb,#F87171 55%,transparent)}
+.banner.warn .bi{color:#F87171}
+.banner .x{margin-left:auto;color:var(--mutB);font-size:16px;flex:none}
+.note.warn{border-color:color-mix(in srgb,#F87171 55%,transparent);color:var(--inkB)}
+.note.warn svg{color:#F87171;font-size:18px;flex:none}
+.obx{position:absolute;left:50%;transform:translateX(-50%);bottom:22px;z-index:20;display:flex!important;align-items:center;gap:8px;border-radius:999px;padding:10px 16px!important;background:var(--inkB)!important;color:var(--bgB);font:600 13px Sora,system-ui,sans-serif;white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.35)}
+.obx.warn{background:#F87171!important;color:#1A0505}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:31;background:var(--cardB);border-radius:24px 24px 0 0;padding:10px 18px 30px;border-top:1px solid var(--lineB);max-height:75%;overflow:auto}
+.sheet .grab{width:40px;height:5px;border-radius:3px;background:var(--lineB);margin:0 auto 14px}
+.sheet h3{margin:0 0 4px;font-size:18px}
+.sheet p{margin:0 0 12px;font-size:13px;color:var(--mutB);line-height:1.45}
+.orow{display:flex;gap:12px;align-items:center;padding:11px 0;border-top:1px solid var(--lineB)}
+.orow .oi{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--card2B);font-size:16px;color:var(--mutB);flex:none}
+.orow div{flex:1;min-width:0}
+.orow b{display:block;font-size:14px;font-weight:600}
+.orow small{display:block;font-size:12px;color:var(--mutB);line-height:1.4}
+.orow .st{font-size:12px;font-weight:700;white-space:nowrap}
+.orow .st.q{color:var(--wait)}.orow .st.ok{color:var(--accInk)}.orow .st.no{color:#F87171}
+.sheet .done{display:block!important;width:100%;text-align:center!important;margin-top:14px;border-radius:14px!important;padding:13px!important;font-weight:700;background:var(--card2B)!important}
+.home{position:absolute;inset:0;background:linear-gradient(160deg,#27305A,#0B0F22 60%,#3A2350);color:#fff;font-family:Figtree,system-ui,sans-serif;display:flex;flex-direction:column}
+.home .icons{display:grid;grid-template-columns:repeat(4,1fr);gap:22px 10px;padding:30px 22px}
+.home .ap{display:flex!important;flex-direction:column;align-items:center;gap:6px;font-size:11px;color:#fff}
+.home .ap i{width:60px;height:60px;border-radius:15px;display:block;background:rgba(255,255,255,.14)}
+.home .ap i.gw{background:#0A0E1C;display:grid;place-items:center;color:#FFC54D;font-size:34px;box-shadow:0 0 0 1px rgba(255,255,255,.2)}
+.home .hint{margin:auto 22px 40px;padding:12px 14px;border-radius:14px;background:rgba(0,0,0,.35);font-size:13px;line-height:1.45;opacity:.9}
+.pnote{margin:0 16px 12px;padding:10px 12px;border-radius:10px;background:#EEF2FF;color:#3730A3;font-size:13px;line-height:1.4}
+.prow .dec button.on{background:#F3F4F6}
+.prow .flip{font-size:13px;font-weight:600;padding:4px 6px!important;border-radius:6px}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div class="intro">
+      <h1>What does a teen see while Check-offs wait for a connection, and who wins when they arrive?</h1>
+      <p>#54. Today a Check-off made with no signal just fails. Here it is saved on Kuba's phone and sent the next time the app is open with a connection (iOS never sends in the background). Play with the switches, or pick a scenario. Kuba's phone is on the left, the parent's Inbox on the right, and the state panel below shows the queue next to what the server holds.</p>
+      <div class="scen" id="scen"></div>
+      <div class="try" id="try"></div>
+    </div>
+    <div class="ctl">
+      <div class="ctl-row"><span>Teen layout</span><div class="seg" id="vSeg"></div></div>
+      <div class="ctl-row"><span>Connection</span><div class="seg" id="netSeg"></div></div>
+      <div class="ctl-row"><span>Kuba's app</span><div class="seg" id="fgSeg"></div></div>
+      <div class="ctl-row"><span>Clock</span><div class="seg" id="clkSeg"></div></div>
+      <div class="ctl-row"><span>Sent late</span><div class="seg" id="ruleSeg"></div></div>
+      <div class="ctl-row"><span>Theme</span><div class="seg" id="themeSeg"></div><button class="reset" id="reset">Reset</button></div>
+    </div>
+  </div>
+  <div class="phones">
+    <div class="pcol"><h3>Kuba (teen)</h3><div class="phone"><div class="screen" id="cscr"></div></div></div>
+    <div class="pcol"><h3>Parent (always online)</h3><div class="phone"><div class="screen" id="pscr"></div></div></div>
+  </div>
+  <div class="state">
+    <div class="about" id="qPanel"></div>
+    <div class="about" id="sPanel"></div>
+    <div class="about" id="lPanel"></div>
+  </div>
+  <div class="abouts">
+    <div class="about" id="vAbout"></div>
+    <div class="about" id="rAbout"></div>
+    <div class="about"><h2>Same in all three (defaults to confirm)</h2><ul>
+      <li><b>The parent's decision wins.</b> A queued Check-off on a Task the parent decided meanwhile is dropped, and Kuba sees the decision with a short note.</li>
+      <li><b>Tap and undo cancel out</b> while offline; nothing is sent.</li>
+      <li><b>Sent in tap order</b> the moment the app is open with a connection. Nothing sends while the app is closed or in the background.</li>
+      <li><b>Opening the app offline</b> shows the board as last loaded, with when that was.</li>
+      <li><b>A photo</b> added offline waits the same way and uploads with the Check-offs.</li>
+      <li><b>The parent sees nothing</b> of a queue: a Check-off exists for them once it arrives.</li>
+    </ul></div>
+  </div>
+</div>
+
+<div class="switcher" role="group" aria-label="Teen layout switcher">
+  <button id="prev" aria-label="Previous layout">←</button>
+  <div class="lbl" id="lbl"></div>
+  <button id="next" aria-label="Next layout">→</button>
+</div>
+
+<script>
+const VARS = {
+  A:{name:"Quiet", about:[
+    "Queued tiles get a <b>dashed outline and a cloud badge</b>, and say <b>“Sends when online”</b>. The header gets a small <b>Offline · updated 07:40</b> line.",
+    "When they send, nothing pops up unless something <b>wasn't</b> accepted: then a note sits above the Tasks (and a short toast).",
+    "Least noise: Kuba mostly never notices. The catch: no single place says how many are waiting."]},
+  B:{name:"Banner", about:[
+    "A <b>card above the week strip</b> while offline: “You're offline. 2 changes saved on this phone.” Tiles look exactly as they do online (Waiting for a check).",
+    "When the queue sends, the card turns into <b>“Sent. Your parent can see them now.”</b> or explains what wasn't accepted, until Kuba closes it.",
+    "Clear and calm, but it pushes the week strip down while it's there."]},
+  C:{name:"Outbox", about:[
+    "A <b>floating “2 to send” pill</b> at the bottom. Tap it for a list of each queued change: which Task, which day, when it was tapped, and its status.",
+    "After sending, the list keeps what happened (Sent, or Not sent and why). The pill turns red when something wasn't accepted.",
+    "Most precise, and the most machinery: a teen has to open it to learn anything."]},
+};
+const ORDER = Object.keys(VARS);
+const ACC = "#FFC54D";
+const TASKS = [
+  {id:"bd",name:"Make the bed",icon:"bed",e:"🛏️"},
+  {id:"rm",name:"Tidy room",icon:"sparkle",e:"🧹"},
+  {id:"lv",name:"Leave on time",icon:"door",e:"🚪"},
+];
+const DAYS = ["2026-09-28","2026-09-29","2026-09-30","2026-10-01","2026-10-02"];
+const WD = ["Mon","Tue","Wed","Thu","Fri"], WDL = ["Monday","Tuesday","Wednesday","Thursday","Friday"];
+// Clock in minutes from Monday 00:00 (Europe/Warsaw).
+const CLOCKS = [
+  {id:"m", label:"Mon 07:40", t:7*60+40},
+  {id:"t", label:"Tue 07:30", t:1440+7*60+30},
+  {id:"n", label:"Tue 23:05", t:1440+23*60+5},
+];
+const hhmm = t => `${String(Math.floor(t%1440/60)).padStart(2,"0")}:${String(t%60).padStart(2,"0")}`;
+const when = t => `${WD[Math.floor(t/1440)]} ${hhmm(t)}`;
+const deadline = di => (di+1)*1440 + 22*60;
+const ICON = {
+  bed:'<path d="M3 19V6"/><path d="M3 15h18v4"/><path d="M21 15v-2.5A2.5 2.5 0 0018.5 10H11v5"/><circle cx="7" cy="12" r="1.8"/>',
+  sparkle:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',
+  door:'<path d="M5 21V4a1 1 0 011-1h9l4 2v16"/><path d="M3 21h18"/><circle cx="12" cy="13" r=".8"/><path d="M15 3v18"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  clock:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 2"/>',
+  x:'<path d="M7 7l10 10M17 7L7 17"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+  doc:'<path d="M15 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7z"/><path d="M14 2v5h5"/><path d="M8 13h8M8 17h5"/>',
+  cam:'<path d="M4 8h3l1.5-2.5h7L17 8h3a1 1 0 011 1v9a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z"/><circle cx="12" cy="13" r="3.5"/>',
+  cloudOff:'<path d="M3 3l18 18"/><path d="M8.5 8.6A5 5 0 0117 10h1a3.5 3.5 0 012.2 6.2M16 18H7a4 4 0 01-1.4-7.7"/>',
+  cloudUp:'<path d="M7 18a4 4 0 01-.6-8A6 6 0 0118 10h.5a3.5 3.5 0 010 7H17"/><path d="M12 13v8M9 16l3-3 3 3"/>',
+  alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/>',
+  undo:'<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-3"/>',
+};
+const STAR_D = "M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z";
+const svg = k => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+const star = () => `<svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_D}" fill="currentColor"/></svg>`;
+const starsWord = n => n===1 ? "gwiazdka" : ([2,3,4].includes(n%10) && ![12,13,14].includes(n%100)) ? "gwiazdki" : "gwiazdek";
+const tname = id => TASKS.find(t=>t.id===id).name;
+function room(){
+  const s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#D9E2EC"/><rect y="215" width="400" height="85" fill="#9C8266"/><rect x="250" y="40" width="110" height="90" rx="4" fill="#CFE6FF" stroke="#fff" stroke-width="6"/><rect x="40" y="50" width="70" height="95" rx="3" fill="#E0A45B"/><rect x="30" y="170" width="220" height="60" rx="8" fill="#8B6A4E"/><rect x="36" y="150" width="208" height="46" rx="12" fill="#7A5C9E"/><rect x="44" y="138" width="60" height="26" rx="10" fill="#F4F1EA"/><rect x="290" y="160" width="80" height="60" rx="4" fill="#A98463"/></svg>`;
+  return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(s);
+}
+const PHOTO = room();
+
+/* ---------- state ---------- */
+const A="approved", W="checked_off", R="rejected", N="not_done";
+const LABEL = {not_done:"Not done yet", checked_off:"Waiting for a check", approved:"Counted", rejected:"Not counted"};
+let st;
+function fresh(p={}){
+  return {v:p.v||"A", theme:p.theme||"dark", rule:p.rule||"tap", scen:null,
+    online:true, fg:true, clock:0,
+    srv:{}, srvPhoto:{},            // what the server holds (and the parent sees)
+    snap:{tasks:{}, photo:{}, at:CLOCKS[0].t}, // the board as Kuba's phone last loaded it
+    queue:[],                        // changes waiting on Kuba's phone, in tap order
+    results:null, outlog:[], sheet:false, toast:null, day:null, log:[]};
+}
+st = fresh();
+const now = () => CLOCKS[st.clock].t;
+const todayIdx = () => Math.floor(now()/1440);
+const live = () => st.online && st.fg;
+const key = (t,d) => t+"@"+d;
+const srvState = (t,d) => st.srv[key(t,d)] || N;
+function syncSnap(){ if (live()) st.snap = {tasks:{...st.srv}, photo:{...st.srvPhoto}, at:now()}; }
+function queued(t,d){ return st.queue.find(o=>o.kind==="check" && o.task===t && o.day===d); }
+function teenState(t,d){
+  let s = st.snap.tasks[key(t,d)] || N;
+  const o = queued(t,d);
+  if (o) s = o.done ? W : N;
+  return s;
+}
+function teenPhoto(d){ const o = st.queue.find(o=>o.kind==="photo" && o.day===d); return o ? {src:o.src, at:o.at, q:true} : st.snap.photo[d]; }
+const open = di => di===todayIdx() || (di===todayIdx()-1 && now() < deadline(di));
+const log = s => st.log.unshift(`${when(now())} · ${s}`);
+
+function tap(t, di){
+  const s = teenState(t, di);
+  if (!open(di) || s===A || s===R) return;
+  const o = queued(t, di);
+  if (o){ st.queue = st.queue.filter(x=>x!==o); log(`Kuba taps ${tname(t)} (${WD[di]}) again: cancels the queued change, nothing will be sent`); return; }
+  const done = s===N;
+  st.queue.push({kind:"check", task:t, day:di, done, at:now(), offline:!live()});
+  log(`Kuba ${done?"checks off":"undoes"} ${tname(t)} (${WD[di]})${live()?"":": saved on the phone"}`);
+  flush();
+}
+function addPhoto(di){
+  if (!open(di)) return;
+  st.queue = st.queue.filter(o=>!(o.kind==="photo" && o.day===di));
+  st.queue.push({kind:"photo", day:di, src:PHOTO, at:now(), offline:!live()});
+  log(`Kuba adds a photo to ${WD[di]}${live()?"":": saved on the phone"}`);
+  flush();
+}
+function flush(){
+  if (!live() || !st.queue.length) return;
+  const res = [];
+  for (const o of st.queue){
+    const at = st.rule==="tap" ? o.at : now();
+    let r;
+    if (at >= deadline(o.day)) r = {ok:false, why:`Too late: ${WDL[o.day]} closed at 22:00 on ${WDL[o.day+1]}.`};
+    else if (o.kind==="check"){
+      const s = srvState(o.task, o.day);
+      if (s===A) r = {ok:false, why:"Your parent had already counted it."};
+      else if (s===R) r = {ok:false, why:"Your parent had already marked it Not counted."};
+      else { st.srv[key(o.task,o.day)] = o.done ? W : N; r = {ok:true}; }
+    } else { st.srvPhoto[o.day] = {src:o.src, at:o.at}; r = {ok:true}; }
+    const what = o.kind==="photo" ? `Photo (${WDL[o.day]})` : `${o.done?"":"Undo "}${tname(o.task)} (${WDL[o.day]})`;
+    if (o.offline) res.push({...r, what, o});
+    log(`${what}: ${r.ok?"arrives on the server":"refused. "+r.why}${o.offline?` (tapped ${when(o.at)})`:""}`);
+  }
+  st.queue = [];
+  syncSnap();
+  if (res.length){
+    st.results = res;
+    st.outlog = [...res.map(r=>({...r, sentAt:now()})), ...st.outlog];
+    const bad = res.filter(r=>!r.ok);
+    st.toast = st.v==="B" ? null : bad.length ? `${bad.length===1?bad[0].what.replace(/ \(.*/,""):bad.length+" changes"} not sent` : (st.v==="C" ? `${res.length} sent` : null);
+  }
+}
+
+/* ---------- teen ---------- */
+function header(){
+  const di = todayIdx(), shownDay = st.day ?? di;
+  const approved = TASKS.filter(t=>teenState(t.id,di)===A).length;
+  const bal = 41 + DAYS.slice(0,2).reduce((n,_,d)=>n+TASKS.filter(t=>teenState(t.id,d)===A).length,0);
+  const off = !st.online ? `<span class="off">${svg("cloudOff")} Offline · updated ${when(st.snap.at)}</span>` : "";
+  return `<header><div class="who"><small>${WDL[di]} ${28+di} September</small><h1>Hey, Kuba</h1>${st.v==="A"?off:""}</div>
+    <button class="hbtn" aria-label="Your Contract">${svg("doc")}</button><button class="hbtn" aria-label="Your look">${svg("gear")}</button>
+    <button class="bal" style="--p:${approved/TASKS.length*100}"><b>${star()}${bal}</b><small>${starsWord(bal)}</small></button></header>`;
+}
+function banner(){
+  if (st.v!=="B") return "";
+  const n = st.queue.length;
+  if (!st.online) return `<div class="banner"><span class="bi">${svg("cloudOff")}</span><div><b>You're offline</b><span>${n?`${n} change${n>1?"s":""} saved on this phone. ${n>1?"They send":"It sends"} when you're back online.`:`Check off as usual. Changes are saved and sent when you're back.`} Updated ${when(st.snap.at)}.</span></div></div>`;
+  if (st.results){
+    const bad = st.results.filter(r=>!r.ok);
+    if (bad.length) return `<div class="banner warn"><span class="bi">${svg("alert")}</span><div><b>${bad.length===st.results.length?"Not sent":`${st.results.length-bad.length} sent, ${bad.length} not`}</b><span>${bad.map(r=>`${r.what}: ${r.why}`).join("<br>")}</span></div><button class="x" data-act="clear" aria-label="Close">${svg("x")}</button></div>`;
+    return `<div class="banner ok"><span class="bi">${svg("check")}</span><div><b>Sent</b><span>Your parent can see ${st.results.length>1?"them":"it"} now.</span></div><button class="x" data-act="clear" aria-label="Close">${svg("x")}</button></div>`;
+  }
+  return "";
+}
+function strip(){
+  const di = todayIdx(), sel = st.day ?? di;
+  return `<nav class="week">${DAYS.map((_,d)=>{
+    const fut = d>di, waiting = !fut && TASKS.some(t=>teenState(t.id,d)===W);
+    const pips = TASKS.map(t=>`<i class="${!fut&&teenState(t.id,d)===A?"on":""}"></i>`).join("");
+    return `<button class="wd ${d===sel?"sel":""} ${d===di?"today":""} ${fut?"fut":""}" ${fut?"disabled":`data-day="${d}"`}>
+      ${waiting?`<span class="dot"></span>`:""}<span class="l">${WD[d]}</span><span class="n">${28+d>30?28+d-30:28+d}</span><span class="pips">${pips}</span></button>`;}).join("")}</nav>`;
+}
+function dayBlock(){
+  const di = st.day ?? todayIdx();
+  const done = TASKS.filter(t=>teenState(t.id,di)!==N).length;
+  let notes = "";
+  if (st.v==="A" && st.results){
+    const bad = st.results.filter(r=>!r.ok);
+    if (bad.length) notes += `<div class="note warn">${svg("alert")}<span>${bad.map(r=>`<b>${r.what.replace(/ \(.*/,"")}</b> wasn't sent. ${r.why}`).join("<br>")}</span></div>`;
+  }
+  if (di===todayIdx()-1) notes += open(di) ? `<div class="note">You can still change this day until 22:00 today.</div>` : `<div class="note">This day can't be changed any more.</div>`;
+  const tiles = TASKS.map(t=>{
+    const s = teenState(t.id,di), o = queued(t.id,di), qv = o && st.v==="A";
+    const ch = open(di) && s!==A && s!==R;
+    const lbl = qv ? (o.done?"Sends when online":"Undo sends when online") : (s===N && !open(di) ? "Not done" : LABEL[s]);
+    const bdg = qv && o.done ? svg("cloudUp") : s===A?svg("check"):s===W?svg("clock"):s===R?svg("x"):"";
+    return `<div class="tile ${s} ${qv?"q":""}" ${ch?`data-task="${t.id}" role="button" tabindex="0"`:"data-locked"}>
+      <span class="ic">${svg(t.icon)}</span><span class="bdg">${bdg}</span>
+      <b>${t.name}</b><small>${s===A?star()+" +1 · ":""}${lbl}</small></div>`;}).join("");
+  const p = teenPhoto(di);
+  const photo = p ? `<div class="pfull"><button class="img" style="background-image:url('${p.src}')">${p.q?`<div class="up"><div style="text-align:center">${st.online?"Sending photo…":"Sends when online"}</div></div>`:""}</button>
+      <div class="bar"><span>${svg(p.q?"cloudUp":"cam")} ${p.q?`Saved on this phone ${hhmm(p.at)}`:`Added ${hhmm(p.at)}`}</span>${open(di)?`<button data-photo="${di}">Replace</button>`:""}</div></div>`
+    : open(di) ? `<button class="pcard" data-photo="${di}"><span class="cam">${svg("cam")}</span><div><b>Add a photo</b><small>Optional. Show your room, or anything your parent should see.</small></div></button>` : "";
+  return `<div class="dh"><h2>${di===todayIdx()?"Today":di===todayIdx()-1?"Yesterday":WDL[di]}</h2><span class="pill">${done} / ${TASKS.length} done</span></div>
+    ${notes}<div class="grid">${tiles}</div>${photo}`;
+}
+function outbox(){
+  if (st.v!=="C") return "";
+  const n = st.queue.length, bad = st.outlog.filter(r=>!r.ok && !r.seen).length;
+  let pill = "";
+  if (n) pill = `<button class="obx" data-act="sheet">${svg(st.online?"cloudUp":"cloudOff")} ${n} to send</button>`;
+  else if (bad) pill = `<button class="obx warn" data-act="sheet">${svg("alert")} ${bad} not sent</button>`;
+  else if (!st.online) pill = `<button class="obx" data-act="sheet">${svg("cloudOff")} Offline</button>`;
+  if (!st.sheet) return pill;
+  const rows = [
+    ...st.queue.map(o=>`<div class="orow"><span class="oi">${svg(o.kind==="photo"?"cam":o.done?"check":"undo")}</span><div><b>${o.kind==="photo"?"Photo":(o.done?"":"Undo ")+tname(o.task)}</b><small>${WDL[o.day]} · tapped ${hhmm(o.at)}</small></div><span class="st q">Waiting</span></div>`),
+    ...st.outlog.slice(0,6).map(r=>`<div class="orow"><span class="oi">${svg(r.o.kind==="photo"?"cam":r.o.done?"check":"undo")}</span><div><b>${r.what.replace(/ \(.*/,"")}</b><small>${WDL[r.o.day]} · tapped ${hhmm(r.o.at)}${r.ok?` · sent ${when(r.sentAt)}`:`<br>${r.why}`}</small></div><span class="st ${r.ok?"ok":"no"}">${r.ok?"Sent":"Not sent"}</span></div>`),
+  ].join("") || `<p>Nothing waiting.</p>`;
+  return `<div class="scrim" data-act="shut"></div><div class="sheet"><div class="grab"></div><h3>${n?`${n} waiting to send`:"Outbox"}</h3>
+    <p>${st.online?"You're online.":`You're offline. Updated ${when(st.snap.at)}.`} Changes made without a connection wait here and send the next time the app is open online.</p>${rows}
+    <button class="done" data-act="shut">Done</button></div>`;
+}
+function renderChild(){
+  const bar = `<div class="status"><span>${hhmm(now())}</span><span>${st.online?"●●● 5G":"✈︎ No signal"}</span></div>`;
+  if (!st.fg) return `<div class="app"><div class="home"><div class="status" style="color:#fff"><span>${hhmm(now())}</span><span>${st.online?"●●● 5G":"✈︎ No signal"}</span></div><div class="icons">
+    ${["Messages","Camera","Photos","Music","Maps","Spotify","TikTok"].map(n=>`<span class="ap"><i></i>${n}</span>`).join("")}<button class="ap" data-act="openapp"><i class="gw">${star()}</i>Gwiazdki</button></div>
+    <div class="hint">Gwiazdki is closed. iOS doesn't let it send in the background, so anything saved waits until Kuba opens it${st.online?"":" with a connection"}. Tap the Gwiazdki icon to open it.</div></div></div>`;
+  const toast = st.toast ? `<div class="toast">${svg(/not sent/.test(st.toast)?"alert":"check")} ${st.toast}</div>` : "";
+  return `<div class="app ${st.theme==="light"?"light":""} ${st.sheet?"lock":""}" style="--acc:${ACC}">${bar}${header()}${banner()}${strip()}${dayBlock()}${outbox()}${toast}</div>`;
+}
+
+/* ---------- parent ---------- */
+function renderParent(){
+  const days = DAYS.map((_,d)=>d).filter(d=>d<=todayIdx()).reverse();
+  const waiting = days.reduce((n,d)=>n+TASKS.filter(t=>srvState(t.id,d)===W).length,0);
+  const cards = days.map(d=>{
+    const w = TASKS.filter(t=>srvState(t.id,d)===W).length, stars = TASKS.filter(t=>srvState(t.id,d)===A).length;
+    const p = st.srvPhoto[d];
+    const rows = TASKS.map(t=>{
+      const s = srvState(t.id,d);
+      const right = s===A ? `<button class="flip ok" data-dec="${d}|${t.id}|r" title="Change to not counted">✓ ★</button>` : s===R ? `<button class="flip no" data-dec="${d}|${t.id}|a" title="Change to counted">✕</button>`
+        : `<span class="dec">${s===N?`<span class="muted" style="font-size:13px;align-self:center">not done</span>`:""}<button class="y" data-dec="${d}|${t.id}|a" aria-label="Approve">✓</button><button class="x" data-dec="${d}|${t.id}|r" aria-label="Reject">✕</button></span>`;
+      return `<div class="prow"><span class="e">${t.e}</span><span class="n" style="${s===R?"text-decoration:line-through;color:#9CA3AF":""}">${t.name}</span>${right}</div>`;
+    }).join("");
+    return `<div class="pc"><div class="hd"><div><h3>${WDL[d]} ${28+d} September</h3><p>${w} waiting · ${stars} ★ so far</p></div>${w?`<button class="pbtn" data-approve="${d}">Approve all (${w})</button>`:""}</div>
+      ${p?`<div class="pthumbs"><span class="th" style="background-image:url('${p.src}')"></span><span><b>Photo</b>Added ${hhmm(p.at)}.</span></div>`:""}${rows}</div>`;
+  }).join("");
+  return `<div class="ph"><h1>Inbox</h1><button class="lnk">Contracts</button><span class="wpill ${waiting?"on":""}">${waiting} waiting</span></div>
+    <p class="pnote">Prototype: every day is shown open so you can decide a Task before Kuba's queue arrives. Anything still on Kuba's phone isn't here.</p>
+    <section class="kid"><div class="kh"><h2>Kuba</h2></div>${cards}</section>`;
+}
+
+/* ---------- panels + controls ---------- */
+const tag = s => `<span class="tag ${s===W?"W":s===A?"A":s===R?"R":""}">${s===W?"waiting":s===A?"counted":s===R?"not counted":"—"}</span>`;
+function panels(){
+  document.getElementById("qPanel").innerHTML = `<h2>Kuba's phone: queue</h2>${st.queue.length?`<table><tr><th>Change</th><th>Day</th><th>Tapped</th></tr>${st.queue.map(o=>`<tr><td>${o.kind==="photo"?"Photo":(o.done?"Check off ":"Undo ")+tname(o.task)}</td><td>${WD[o.day]}</td><td>${when(o.at)}</td></tr>`).join("")}</table>`:`<p>Empty.</p>`}
+    <p>Board last loaded <b>${when(st.snap.at)}</b>. Sends when: ${st.online?"online ✓":"online ✗"} and ${st.fg?"app open ✓":"app open ✗"}.</p>`;
+  const days = DAYS.map((_,d)=>d).filter(d=>d<=todayIdx());
+  document.getElementById("sPanel").innerHTML = `<h2>Server (what the parent sees)</h2><table><tr><th>Task</th>${days.map(d=>`<th>${WD[d]}</th>`).join("")}</tr>
+    ${TASKS.map(t=>`<tr><td>${t.name}</td>${days.map(d=>`<td>${tag(srvState(t.id,d))}</td>`).join("")}</tr>`).join("")}
+    <tr><td>Photo</td>${days.map(d=>`<td>${st.srvPhoto[d]?"✓":"—"}</td>`).join("")}</tr></table>
+    <p>Deadlines: Monday closes Tue 22:00, Tuesday closes Wed 22:00.</p>`;
+  document.getElementById("lPanel").innerHTML = `<h2>What happened</h2>${st.log.length?`<ol class="log" reversed>${st.log.map(l=>`<li>${l}</li>`).join("")}</ol>`:`<p>Nothing yet.</p>`}`;
+}
+const SCENS = [
+  {id:"bus", name:"1 · No signal on the bus", setup(){ st.online=false; st.clock=0; },
+   text:"Kuba is on the bus with no signal at 07:40. <b>Check off two Tasks</b> and add a photo on his phone, then switch <b>Connection → Online</b>. Try it in each layout."},
+  {id:"first", name:"2 · Parent decides first", setup(){ st.online=false; st.clock=0; st.queue.push({kind:"check",task:"rm",day:0,done:true,at:7*60+41,offline:true}); st.fg=false; log("Kuba checks off Tidy room (Mon) offline, then closes the app"); },
+   text:"Kuba checked off <b>Tidy room</b> offline and closed the app. The parent peeks in, finds the room a mess and taps <b>✕</b> on Tidy room. Then switch <b>Online</b> and open Gwiazdki on Kuba's home screen."},
+  {id:"late", name:"3 · Sent after the deadline", setup(){ st.online=false; st.clock=0; ["bd","lv"].forEach((t,i)=>st.queue.push({kind:"check",task:t,day:0,done:true,at:7*60+41+i,offline:true})); st.fg=false; st.clock=2; log("Kuba checked off Make the bed and Leave on time Mon 07:41 offline, then the phone stayed offline"); },
+   text:"Kuba checked off two Tasks on <b>Monday at 07:41</b> with no signal, and the phone didn't get a connection with the app open until <b>Tuesday 23:05</b>, after Monday closed. Switch <b>Online</b>, open Gwiazdki, and see what arrives. Then flip <b>Sent late</b>, pick the scenario again and compare."},
+];
+function seg(el, items, cur, on){
+  el.innerHTML = items.map(([k,l])=>`<button aria-pressed="${k===cur}" data-k="${k}">${l}</button>`).join("");
+  el.onclick = e => { const b = e.target.closest("button"); if (b) on(b.dataset.k); };
+}
+function render(){
+  syncSnap();
+  const cs = document.getElementById("cscr"), ps = document.getElementById("pscr");
+  const ct = cs.scrollTop, pt = ps.scrollTop;
+  cs.innerHTML = renderChild(); cs.scrollTop = st.sheet ? 0 : ct;
+  ps.innerHTML = `<div class="par"><div class="status"><span>${hhmm(now())}</span><span>●●● Wi-Fi</span></div>${renderParent()}</div>`; ps.scrollTop = pt;
+  st.toast = null;
+  panels();
+  const v = VARS[st.v];
+  document.getElementById("lbl").innerHTML = `${st.v} <small>(${v.name})</small>`;
+  seg(document.getElementById("vSeg"), ORDER.map(k=>[k,`${k} ${VARS[k].name}`]), st.v, k=>{ st.v=k; st.sheet=false; render(); });
+  seg(document.getElementById("netSeg"), [["on","Online"],["off","Offline"]], st.online?"on":"off", k=>{ st.online = k==="on"; log(st.online?"Kuba's phone gets a connection":"Kuba's phone loses its connection"); flush(); render(); });
+  seg(document.getElementById("fgSeg"), [["on","Open"],["off","Closed"]], st.fg?"on":"off", k=>{ st.fg = k==="on"; st.sheet=false; if (st.fg) st.day=null; log(st.fg?"Kuba opens the app":"Kuba closes the app"); flush(); render(); });
+  seg(document.getElementById("clkSeg"), CLOCKS.map((c,i)=>[String(i),c.label]), String(st.clock), k=>{ st.clock = Number(k); st.day = null; log("Time passes"); render(); });
+  seg(document.getElementById("ruleSeg"), [["tap","Tap time counts (recommended)"],["arrival","Arrival time counts"]], st.rule, k=>{ st.rule=k; render(); });
+  seg(document.getElementById("themeSeg"), [["dark","Dark"],["light","Light"]], st.theme, k=>{ st.theme=k; render(); });
+  seg(document.getElementById("scen"), SCENS.map(s=>[s.id,s.name]), st.scen, k=>startScen(k));
+  document.getElementById("try").innerHTML = st.scen ? SCENS.find(s=>s.id===st.scen).text : "";
+  document.getElementById("vAbout").innerHTML = `<h2>Teen ${st.v} · ${v.name}</h2><ul>${v.about.map(x=>`<li>${x}</li>`).join("")}</ul>`;
+  document.getElementById("rAbout").innerHTML = `<h2>Sent late: ${st.rule==="tap"?"tap time counts":"arrival time counts"}</h2><ul>${st.rule==="tap"
+    ? `<li>A Check-off counts if Kuba <b>tapped</b> it before the day closed (22:00 the next day), however late it reaches the server.</li><li>Fair to a teen whose phone had no signal: what they did on time stays on time. The parent still approves every Task, so a wrong phone clock can at worst put a claim in front of them.</li><li>Guard: a tap time in the future, or more than a week before it arrives, is refused.</li>`
+    : `<li>The server judges by when the Check-off <b>arrives</b>, as the database does today. Anything arriving after 22:00 the next day is refused and Kuba sees “Too late”.</li><li>Simplest and can't be gamed by a phone clock, but punishes a phone that simply had no signal.</li><li>The parent can still approve the Task by hand.</li>`}</ul>`;
+}
+function startScen(id){ st = fresh({v:st.v, theme:st.theme, rule:st.rule}); st.scen = id; SCENS.find(s=>s.id===id).setup(); render(); }
+document.getElementById("cscr").addEventListener("click", e => {
+  const el = e.target.closest("[data-act],[data-task],[data-day],[data-photo]");
+  if (!el || el.disabled) return;
+  const d = el.dataset;
+  if (d.act==="openapp"){ st.fg = true; st.day = null; log("Kuba opens the app"); flush(); }
+  else if (d.act==="sheet"){ st.sheet = true; }
+  else if (d.act==="shut"){ st.sheet = false; st.outlog.forEach(r=>r.seen=true); }
+  else if (d.act==="clear"){ st.results = null; }
+  else if (d.task){ st.results = st.v==="C" ? st.results : null; tap(d.task, st.day ?? todayIdx()); }
+  else if (d.photo){ addPhoto(Number(d.photo)); }
+  else if (d.day){ st.day = Number(d.day); }
+  render();
+});
+document.getElementById("pscr").addEventListener("click", e => {
+  const el = e.target.closest("[data-approve],[data-dec]");
+  if (!el) return;
+  const d = el.dataset;
+  if (d.approve){ const di = Number(d.approve); TASKS.forEach(t=>{ if (srvState(t.id,di)===W) st.srv[key(t.id,di)] = A; }); log(`Parent approves all of ${WDL[di]}`); }
+  else { const [di,t,v] = d.dec.split("|"); st.srv[key(t,Number(di))] = v==="a" ? A : R; log(`Parent marks ${tname(t)} (${WDL[di]}) ${v==="a"?"counted":"not counted"}`); }
+  render();
+});
+function cycle(n){ const i = ORDER.indexOf(st.v); st.v = ORDER[(i+n+ORDER.length)%ORDER.length]; st.sheet = false; render(); }
+document.getElementById("prev").onclick = () => cycle(-1);
+document.getElementById("next").onclick = () => cycle(1);
+document.addEventListener("keydown", e => { if (e.key==="ArrowLeft") cycle(-1); if (e.key==="ArrowRight") cycle(1); });
+document.getElementById("reset").onclick = () => { st = fresh({v:st.v, theme:st.theme, rule:st.rule}); render(); };
+render();
+</script>
