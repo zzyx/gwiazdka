@@ -1,0 +1,648 @@
+<title>Gwiazdki Parent Home</title>
+<!--
+  PROTOTYPE, throwaway. Answers zzyx/gwiazdka#72: what should the parent's home look like
+  so it is compact, informative, responsive (MacBook and iPhone) and lists weeks newest first?
+  Each variant is drawn twice from the same data: a MacBook screen (1280 px) and an iPhone (390 px).
+  A tap in one screen shows in the other. Parent's current look (Figtree, white cards, blue buttons).
+  Variants:
+    A  Board: one column per child, weeks newest first as History grids (this + last week open)
+    B  Family weeks: one band per week, both children's grids side by side inside it
+    C  Split: week list on the left, the picked week's grids for both children on the right
+    D  Task streaks: one table per child, Tasks down, the last weeks side by side as dot columns
+  Rules as shipped: tap a cell (empty or waiting -> approved, approved -> rejected, rejected -> approved),
+  "All" approves a day's undecided Tasks (never overturns a rejection), Weekly bonus from Friday.
+  Data is made up (Olek and Sofia, Contracts from 1 Sep 2026, today Tue 29 Sep) and lives in memory.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: a review desk. Variant switcher and notes on top, then a MacBook screen and an iPhone side by side. */
+:root{
+  --bg:#EDEFF4; --panel:#FFFFFF; --ink:#1C2030; --muted:#5B6278; --line:#D9DDE7;
+  --accent:#2F5BEA; --chip:#E3E7F1; --frame:#161A24; --bar:#141824; --bar-ink:#FFFFFF;
+  --f-ui:Figtree,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#11131A; --panel:#1B1E29; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+    --accent:#8FA8FF; --chip:#262B3A; --frame:#05060A; --bar:#F1F3F9; --bar-ink:#12141B;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#11131A; --panel:#1B1E29; --ink:#E8EAF2; --muted:#9AA1B7; --line:#2E3342;
+  --accent:#8FA8FF; --chip:#262B3A; --frame:#05060A; --bar:#F1F3F9; --bar-ink:#12141B;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:14px;padding-inline:16px;padding-block:20px 40px;margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1760px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.top{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px;align-items:start}
+.intro h1{font-size:24px;line-height:1.2;margin:0 0 6px;text-wrap:balance}
+.intro p{margin:0;color:var(--muted);line-height:1.5;max-width:68ch}
+.pick{display:flex;flex-direction:column;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--chip);border-radius:10px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;padding:8px 6px;border-radius:8px;font-weight:700;color:var(--muted);line-height:1.15}
+.seg.two{grid-template-columns:1fr 1fr}
+.seg button small{display:block;font-weight:500;font-size:12px}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.about{margin:0;color:var(--muted);line-height:1.5}
+.about b{color:var(--ink)}
+.pros{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;line-height:1.45}
+.pros div{background:var(--chip);border-radius:10px;padding:8px 10px;color:var(--muted)}
+.pros b{display:block;color:var(--ink);font-size:11px;text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
+.row2{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ghost{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 12px;font-weight:600;color:var(--ink)}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:22px;align-items:start}
+.dev{display:flex;flex-direction:column;gap:8px;min-width:0}
+.dev>h3{margin:0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.fit{width:100%;position:relative;overflow:hidden}
+.mac .bezel{width:1304px;height:824px;border-radius:18px;background:var(--frame);padding:12px;transform-origin:0 0;position:absolute;left:0;top:0}
+.phone .bezel{width:410px;height:864px;border-radius:52px;background:var(--frame);padding:10px;transform-origin:0 0;position:absolute;left:0;top:0}
+.scr{width:100%;height:100%;overflow-y:auto;overflow-x:hidden;background:#F6F7F9;border-radius:8px}
+.phone .scr{border-radius:42px}
+details.defaults{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+details.defaults summary{cursor:pointer;font-weight:700}
+details.defaults ul{margin:8px 0 0;padding-left:18px;color:var(--muted);line-height:1.5;display:flex;flex-direction:column;gap:3px}
+@media (max-width:1180px){ .stage{grid-template-columns:1fr} .phone{max-width:410px;justify-self:center;width:100%} .top{grid-template-columns:1fr} }
+@media (max-width:520px){ .pros{grid-template-columns:1fr} .seg button small{display:none} }
+
+/* ============ PARENT APP (as shipped: Figtree, #F6F7F9, white cards, blue buttons; light only) ============ */
+.app{--ink:#1F2430;--mut:#6B7280;--ln:#E5E7EB;--soft:#F0F1F3;--blue:#2563EB;--blue2:#1D4ED8;--bluebg:#EFF6FF;--bluebd:#BFDBFE;
+  --grn:#15803D;--grnbg:#DCFCE7;--grnbd:#86EFAC;--red:#B91C1C;--redbg:#FEE2E2;--redbd:#FCA5A5;--amb:#92400E;--ambbg:#FEF3C7;--ambbar:#FCD34D;
+  color-scheme:light;min-height:100%;color:var(--ink);font-family:var(--f-ui);font-size:14px;background:#F6F7F9;display:flex;flex-direction:column}
+.app button{color:inherit}
+.abar{display:flex;align-items:center;gap:10px;padding:14px 16px 10px;background:#F6F7F9;position:sticky;top:0;z-index:5}
+.phone .abar{padding-top:54px}
+.abar h1{font-size:22px;margin:0;font-weight:800;flex:1}
+.abar a{color:var(--blue);font-size:14px;font-weight:600;text-decoration:none;cursor:pointer}
+.pill{border-radius:999px;padding:3px 10px;font-weight:700;font-size:13px;white-space:nowrap}
+.pill.hot{background:var(--blue);color:#fff}.pill.cold{background:var(--ln);color:var(--mut)}
+.amb{background:var(--ambbg);color:var(--amb);border-radius:999px;padding:1px 8px;font-size:12px;font-weight:700;white-space:nowrap}
+.body{padding:0 16px 24px;display:flex;flex-direction:column;gap:12px}
+.wide .body{padding:4px 24px 32px}
+.card{background:#fff;border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.06),0 0 0 1px rgba(16,24,40,.03)}
+.mut{color:var(--mut)}
+.tabs{display:flex;gap:6px}
+.tabs button{flex:1;border:1px solid var(--ln);background:#fff;border-radius:999px;padding:7px 10px;font-weight:700;display:flex;justify-content:center;gap:6px;align-items:center}
+.tabs button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.tabs button .dot{width:7px;height:7px;border-radius:50%;background:var(--ambbar)}
+
+/* navigation */
+.navt{display:flex;gap:2px;background:#ECEEF2;border-radius:10px;padding:3px;flex:none}
+.navt button{border:0;background:none;border-radius:8px;padding:6px 14px;font-weight:700;color:var(--mut);display:flex;align-items:center;gap:6px}
+.navt button[aria-current="page"]{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(16,24,40,.1)}
+.badge{background:var(--blue);color:#fff;border-radius:999px;font-size:11px;font-weight:800;padding:0 6px;line-height:17px;min-width:17px;text-align:center}
+.acct{width:32px;height:32px;border-radius:50%;background:#E0E7FF;color:#3730A3;font-weight:800;display:grid;place-items:center;border:0;flex:none}
+.brand{font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px}
+.brand i{width:26px;height:26px;border-radius:8px;background:var(--blue);color:#fff;display:grid;place-items:center;font-style:normal;font-size:14px}
+.shell{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100%}
+.side{background:#fff;border-right:1px solid var(--ln);padding:16px 12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:800px}
+.side .brand{padding:2px 8px 14px}
+.side h4{margin:14px 8px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut)}
+.nv{border:0;background:none;border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:10px;font-weight:600;text-align:left;width:100%;color:#374151}
+.nv:hover{background:var(--soft)}
+.nv[aria-current="page"]{background:var(--bluebg);color:var(--blue2)}
+.nv svg{flex:none}
+.nv .sp{flex:1}
+.nv .av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex:none}
+.side .low{margin-top:auto;display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--ln);padding-top:8px}
+.tbar{position:sticky;bottom:0;margin-top:auto;display:grid;grid-template-columns:repeat(3,1fr);background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-top:1px solid var(--ln);padding:6px 8px 26px;z-index:6}
+.tbar button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:700;color:var(--mut);position:relative;padding:4px 0}
+.tbar button[aria-current="page"]{color:var(--blue)}
+.tbar .badge{position:absolute;top:0;left:calc(50% + 6px)}
+.hnav{display:flex;align-items:center;gap:8px}
+.hnav .t{flex:1;text-align:center;line-height:1.15}
+.hnav .t b{display:block}
+.hnav .t small{color:var(--mut);font-size:12px}
+.arrow{width:34px;height:34px;border-radius:50%;border:1px solid var(--ln);background:#fff;font-size:17px}
+.arrow[disabled]{opacity:.35}
+.crow{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--soft);font-size:13.5px}
+.crow:first-child{border-top:0}
+
+/* child summary */
+.sum{padding:12px 14px;display:flex;align-items:center;gap:12px}
+.sum .who{flex:1;min-width:0}
+.sum .who b{font-size:18px;display:block;line-height:1.1}
+.sum .who small{color:var(--mut);font-size:12px}
+.bal{text-align:right;line-height:1.1}
+.bal b{font-size:20px;font-variant-numeric:tabular-nums}
+.bal small{display:block;color:var(--mut);font-size:12px}
+.stats{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 12px}
+.stat{background:var(--soft);border-radius:8px;padding:4px 8px;font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums}
+.stat b{color:var(--ink)}
+.stat.w{background:var(--ambbg);color:var(--amb)}.stat.w b{color:var(--amb)}
+.link{border:0;background:none;color:var(--blue);font-weight:600;font-size:13px;padding:0}
+.empty{display:flex;align-items:center;gap:10px;margin:0 14px 12px;padding:8px 10px;border:1px solid var(--bluebd);background:var(--bluebg);color:#1E3A8A;border-radius:10px;font-size:12.5px;line-height:1.35}
+.empty p{margin:0;flex:1}
+.bbtn{border:0;background:var(--blue);color:#fff!important;font-weight:700;border-radius:8px;padding:6px 10px;font-size:13px;white-space:nowrap}
+.bbtn:active{background:var(--blue2)}
+.gbtn{border:1px solid #D1D5DB;background:#fff;font-weight:700;border-radius:8px;padding:5px 9px;font-size:13px;color:#374151;white-space:nowrap}
+
+/* week grid */
+.wk{overflow:hidden}
+.wkh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--ln)}
+.wkh .t{flex:1;min-width:0;line-height:1.15}
+.wkh .t b{display:block;font-size:14.5px}
+.wkh .t small{font-size:12px;color:var(--mut)}
+.caret{border:0;background:none;color:var(--mut);font-size:15px;width:26px;height:26px;border-radius:6px}
+.caret:hover{background:var(--soft)}
+.g{display:grid;grid-template-columns:minmax(0,1fr) repeat(5,var(--c,38px));gap:4px 3px;align-items:center;padding:8px 10px 10px 12px}
+.g .dh{text-align:center;font-size:10.5px;font-weight:700;letter-spacing:.04em;color:var(--mut);text-transform:uppercase;line-height:1.1}
+.g .dh b{display:block;margin:1px auto 0;width:22px;font-size:13px;letter-spacing:0;color:var(--ink);border-radius:999px}
+.g .dh b.today{background:var(--ink);color:#fff}
+.g .tn{font-size:13px;line-height:1.2;display:flex;gap:6px;align-items:center;min-width:0}
+.g .tn span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.g .lab{font-size:11.5px;color:var(--mut);font-weight:600}
+.all{border:0;background:var(--bluebg);color:var(--blue);font-weight:700;font-size:11.5px;border-radius:6px;padding:3px 0;width:100%}
+.all[disabled]{visibility:hidden}
+.cell{width:calc(var(--c,38px) - 4px);height:calc(var(--c,38px) - 6px);margin:0 auto;border-radius:9px;border:1.5px solid var(--ln);background:#fff;font-weight:800;font-size:14px;display:grid;place-items:center;padding:0}
+.cell.a{border-color:var(--grnbd);background:var(--grnbg);color:var(--grn)}
+.cell.r{border-color:var(--redbd);background:var(--redbg);color:var(--red)}
+.cell.w{border-color:var(--blue);background:var(--bluebg);color:var(--blue)}
+.cell.e{border-style:dashed;border-color:#93C5FD}
+.cell.off{border-color:#F3F4F6;background:repeating-linear-gradient(45deg,#F3F4F6 0 4px,#fff 4px 8px);cursor:default}
+.g .ct{text-align:center;font-size:11.5px;font-weight:700;color:var(--mut);font-variant-numeric:tabular-nums}
+.wkf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;border-top:1px solid var(--ln);font-size:13px}
+.wkf .sp{flex:1}
+.chip{border:0;border-radius:999px;padding:2px 9px;font-size:12.5px;font-weight:700;white-space:nowrap;background:#F3F4F6;color:var(--mut)}
+.chip.on{background:#DBEAFE;color:var(--blue2)}
+.chip.perf{background:var(--grnbg);color:var(--grn)}
+.bon{display:flex;gap:5px;align-items:center}
+.bon.hot{background:#FFFBEB;border-radius:8px;padding:3px 3px 3px 8px}
+.bon.hot>span{font-size:12px;color:var(--amb);font-weight:700}
+
+/* collapsed week */
+.wr{display:flex;align-items:center;gap:10px;padding:9px 12px;border:0;background:#fff;width:100%;text-align:left;border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.06)}
+.wr:hover{background:#FBFBFD}
+.wr .t{width:96px;flex:none;line-height:1.15}
+.wr .t b{display:block;font-size:13.5px}
+.wr .t small{font-size:12px;color:var(--mut)}
+.bars{display:flex;gap:3px;height:22px;align-items:stretch;flex:1;min-width:60px;max-width:150px}
+.bars i{flex:1;border-radius:3px;background:var(--ln);position:relative;overflow:hidden}
+.bars i.x{background:none;border:1px dashed #D1D5DB}
+.bars i span{position:absolute;left:0;right:0;bottom:0;background:var(--blue)}
+.bars i em{position:absolute;left:0;right:0;background:var(--ambbar)}
+.wr .n{font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sm .bars{height:16px;max-width:90px}
+
+/* A board */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:10px;min-width:0}
+/* B family weeks */
+.strip{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.strip .sum{padding:10px 12px}
+.phone .strip .sum .who b{font-size:16px}
+.phone .strip .bal b{font-size:16px}
+.phone .strip .sum{flex-wrap:wrap;gap:4px}
+.band{display:flex;flex-direction:column;gap:8px}
+.bandh{display:flex;align-items:baseline;gap:8px;padding:2px 2px 0}
+.bandh b{font-size:15px}
+.bandh small{color:var(--mut)}
+.bandh .sp{flex:1}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+.phone .pair{grid-template-columns:1fr}
+.kidtag{font-weight:800;font-size:14px}
+.wrb{display:grid;grid-template-columns:100px 1fr 1fr;gap:12px;align-items:center;padding:9px 12px;border:0;background:#fff;width:100%;text-align:left;border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.06)}
+.phone .wrb{grid-template-columns:78px 1fr 1fr;gap:8px}
+.wrb .k{display:flex;align-items:center;gap:6px;min-width:0}
+.wrb .k>b{font-size:12px;width:40px;flex:none}
+.phone .wrb .k>b{display:none}
+/* C split */
+.split{display:grid;grid-template-columns:360px minmax(0,1fr);gap:20px;align-items:start}
+.list{display:flex;flex-direction:column;overflow:hidden}
+.li{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border:0;border-bottom:1px solid var(--soft);background:#fff;text-align:left;width:100%}
+.li:last-child{border-bottom:0}
+.li[aria-current="true"]{background:var(--bluebg);box-shadow:inset 3px 0 0 var(--blue)}
+.li .h{display:flex;align-items:baseline;gap:6px}
+.li .h b{font-size:14px}
+.li .h small{color:var(--mut);font-size:12px;flex:1}
+.li .k{display:grid;grid-template-columns:44px minmax(0,1fr) 44px 64px;gap:8px;align-items:center;font-size:12.5px}
+.li .k .n{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.li .bars{height:14px;max-width:none}
+.back{border:0;background:none;color:var(--blue);font-weight:700;font-size:15px;padding:0}
+/* D streaks */
+.st{overflow:hidden}
+.stwrap{overflow-x:auto}
+.stt{display:grid;align-items:center;padding:8px 10px 10px 0;min-width:max-content}
+.stt .tn{position:sticky;left:0;background:#fff;z-index:1;padding:0 8px 0 12px;display:flex;align-items:center;gap:6px;font-size:13px;height:100%;border:0;text-align:left;width:100%;white-space:nowrap}
+.stt .tn.on{background:var(--bluebg);color:var(--blue2);font-weight:700}
+.stt .gh{font-size:11px;font-weight:700;color:var(--mut);text-align:center;line-height:1.15;padding:0 4px 4px;border-left:1px solid var(--soft)}
+.stt .gh b{display:block;color:var(--ink);font-size:12.5px}
+.stt .gh.cur b{color:var(--blue)}
+.dots{display:flex;gap:3px;padding:3px 7px;border-left:1px solid var(--soft);align-items:center;justify-content:center;height:100%}
+.dots.on{background:var(--bluebg)}
+.dot2{width:17px;height:17px;border-radius:5px;border:1.5px solid var(--ln);background:#fff;padding:0;font-size:9px;font-weight:900;display:grid;place-items:center;line-height:1}
+.dot2.a{background:#22C55E;border-color:#22C55E;color:#fff}
+.dot2.r{background:var(--redbg);border-color:var(--redbd);color:var(--red)}
+.dot2.w{background:var(--bluebg);border-color:var(--blue);color:var(--blue)}
+.dot2.e{border-style:dashed;border-color:#93C5FD}
+.dot2.off{border-color:transparent;background:repeating-linear-gradient(45deg,#EEF0F3 0 3px,#fff 3px 6px);cursor:default}
+.dcount{font-size:11px;font-weight:800;color:var(--blue2);margin-left:4px;font-variant-numeric:tabular-nums}
+.stt .ft{font-size:11.5px;font-weight:700;color:var(--mut);text-align:center;padding-top:6px;border-left:1px solid var(--soft);display:flex;flex-direction:column;gap:4px;align-items:center}
+.stt .ft .all{width:auto;padding:3px 8px}
+.stt .ftl{position:sticky;left:0;background:#fff;padding:6px 8px 0 12px;font-size:11.5px;font-weight:600;color:var(--mut)}
+.focus{margin:0 12px 12px;padding:8px 10px;border-radius:10px;background:var(--bluebg);font-size:12.5px;color:#1E3A8A;line-height:1.4}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11.5px;color:var(--mut);padding:2px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;border:1px solid;vertical-align:-1px;margin-right:4px}
+.foot{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--mut);padding:4px 2px}
+.foot button{border:0;background:none;color:var(--mut);text-decoration:underline;padding:0}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div class="intro">
+      <h1>Parent home: four ways to see the week</h1>
+      <p>Each variant is drawn on a MacBook screen and an iPhone from the same sample data, so a tap on one shows on the other. Weeks read newest first, cells work like History (tap to set, <b>All</b> per day), and the Weekly bonus is decided right on the week. Olek has last week's bonus to decide and three days with Check-offs waiting; Sofia's Contract has four empty days in its first week. <b>Like yours now</b> swaps in what your screen showed on 29 Sep: Olek without a Contract, Sofia with four bonuses to decide. The navigation switch tries two ways to move between Home, History and Contracts; tap the tabs inside the screens.</p>
+    </div>
+    <div class="pick">
+      <div class="seg" role="group" aria-label="Variant" id="seg"></div>
+      <div class="seg two" role="group" aria-label="Data" id="data"></div>
+      <div class="seg two" role="group" aria-label="Navigation" id="nav"></div>
+      <p class="about" id="about"></p>
+      <div class="pros" id="pros"></div>
+      <div class="row2"><button class="ghost" id="reset">Reset sample data</button><span class="mut" style="color:var(--muted);font-size:13px">Keys ← → switch variants.</span></div>
+    </div>
+  </div>
+  <div class="stage">
+    <div class="dev mac"><h3>MacBook · 1280 px</h3><div class="fit" data-w="1304" data-h="824"><div class="bezel"><div class="scr" id="scr-mac"></div></div></div></div>
+    <div class="dev phone"><h3>iPhone · 390 px</h3><div class="fit" data-w="410" data-h="864"><div class="bezel"><div class="scr" id="scr-phone"></div></div></div></div>
+  </div>
+  <details class="defaults" open>
+    <summary>Same in every variant (defaults to confirm)</summary>
+    <ul>
+      <li>Home replaces today's Inbox at <b>/</b>. Day cards go away: Check-offs waiting show as blue • cells in the week grid, with <b>All</b> per day and a waiting count per child.</li>
+      <li>Weeks are newest first. This week and last week open; older weeks fold to one line with a bar per day and open on tap.</li>
+      <li>The Weekly bonus is decided on the week itself (No / +3 from Friday), replacing the separate week cards and the "All weeks and bonuses" fold.</li>
+      <li>Rules unchanged: tap cycles empty or waiting → ✓, ✓ → ✕, ✕ → ✓; <b>All</b> never overturns a ✕; future days can't be set.</li>
+      <li>/history stays for paid-out Contracts and weeks before this Contract. Contracts and Connect phone stay one tap away.</li>
+      <li>Navigation: Home, History and Contracts become sections. On the iPhone a bottom tab bar with the waiting count on Home. On the MacBook either a sidebar (Nav 1, with each child and their waiting count, Connect a phone and Sign out) or top tabs (Nav 2). The "‹ Inbox" back links and the History row under each child go away.</li>
+      <li>The day photo shows as a small thumbnail above the day's column (left out of this prototype).</li>
+    </ul>
+  </details>
+</div>
+
+<script>
+const TODAY = "2026-09-29", START = "2026-09-01";
+const MONDAYS = ["2026-09-28","2026-09-21","2026-09-14","2026-09-07","2026-08-31"];
+const WD = ["Mon","Tue","Wed","Thu","Fri"];
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const addDays = (d, n) => { const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
+const dnum = d => Number(d.slice(8, 10));
+const short = d => `${dnum(d)} ${MON[Number(d.slice(5, 7)) - 1]}`;
+const range = m => { const f = addDays(m, 4); return m.slice(5,7) === f.slice(5,7) ? `${dnum(m)}–${dnum(f)} ${MON[Number(f.slice(5,7))-1]}` : `${short(m)} – ${short(f)}`; };
+const label = m => m === MONDAYS[0] ? "This week" : m === MONDAYS[1] ? "Last week" : range(m);
+const pln = g => (g / 100).toFixed(2).replace(".", ",") + " zł";
+
+const SAMPLE_KIDS = [
+  { id: "olek", name: "Olek", rate: 50, bonus: 3, tasks: [
+    { id: "hw", name: "Homework", e: "📚" }, { id: "rd", name: "Reading 20 min", e: "📖" },
+    { id: "rm", name: "Tidy room", e: "🧹" }, { id: "pi", name: "Piano practice", e: "🎹" } ] },
+  { id: "sofia", name: "Sofia", rate: 60, bonus: 4, tasks: [
+    { id: "hw", name: "Homework", e: "📚" }, { id: "en", name: "English words", e: "🔤" },
+    { id: "ds", name: "Dishes", e: "🍽️" }, { id: "wo", name: "Workout", e: "🏃" }, { id: "bd", name: "Bed by 22:00", e: "🛏️" } ] },
+];
+
+// "Like yours now": Misha's screen on 29 Sep. Olek has no open Contract; Sofia has 3 Tasks (names made up),
+// 3 zł a star, +3 bonus, one Task approved per day, nothing waiting, and every week's bonus undecided.
+const YOURS_KIDS = [
+  { id: "olek", name: "Olek", none: true, tasks: [] },
+  { id: "sofia", name: "Sofia", rate: 300, bonus: 3, tasks: [
+    { id: "hw", name: "Homework", e: "📚" }, { id: "rd", name: "Reading", e: "📖" }, { id: "rm", name: "Tidy room", e: "🧹" } ] },
+];
+let DATA = "sample", KIDS = SAMPLE_KIDS, NAV = "side";
+const active = () => KIDS.filter(k => !k.none);
+function seedYours() {
+  const st = { cells: {}, bonus: { olek: {}, sofia: {} } };
+  for (const m of MONDAYS) for (let i = 0; i < 5; i++) {
+    const d = addDays(m, i); if (d < START || d >= TODAY) continue;
+    YOURS_KIDS[1].tasks.forEach((t, j) => st.cells[`sofia/${t.id}/${d}`] = d >= "2026-09-07" && j === 0 ? "a" : "n");
+  }
+  return st;
+}
+function seed() {
+  if (DATA === "yours") return seedYours();
+  let s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const st = { cells: {}, bonus: { olek: { "2026-09-14": true, "2026-09-07": false, "2026-08-31": false }, sofia: { "2026-09-21": true, "2026-09-14": true, "2026-09-07": true, "2026-08-31": false } } };
+  for (const k of KIDS) for (const m of MONDAYS) for (let i = 0; i < 5; i++) {
+    const d = addDays(m, i); if (d < START || d > TODAY) continue;
+    for (const t of k.tasks) {
+      const x = rnd(); let v = x < .8 ? "a" : x < .88 ? "r" : "n";
+      if (k.id === "sofia" && d < "2026-09-07") v = "n";
+      st.cells[`${k.id}/${t.id}/${d}`] = v;
+    }
+  }
+  const set = (k, d, v, ids) => { for (const t of KIDS.find(x => x.id === k).tasks) if (!ids || ids.includes(t.id)) st.cells[`${k}/${t.id}/${d}`] = v; };
+  set("olek", "2026-09-29", "w", ["hw", "rd", "pi"]); set("olek", "2026-09-29", "n", ["rm"]);
+  set("olek", "2026-09-28", "w", ["hw", "rm"]); set("olek", "2026-09-25", "w", ["pi"]);
+  set("sofia", "2026-09-29", "w", ["hw", "en"]); set("sofia", "2026-09-29", "n", ["ds", "wo", "bd"]);
+  set("sofia", "2026-09-28", "a");
+  return st;
+}
+let S = seed();
+let V = "A";
+const FS = { mac: { kid: "olek", open: new Set(), sel: MONDAYS[1], detail: false, focus: null }, phone: { kid: "olek", open: new Set(), sel: MONDAYS[1], detail: false, focus: null } };
+
+const kid = id => KIDS.find(k => k.id === id);
+const cellOf = (k, t, d) => (d < START || d > TODAY) ? null : S.cells[`${k.id}/${t.id}/${d}`] ?? "n";
+const dayEmpty = (k, d) => d < TODAY && d >= START && k.tasks.every(t => cellOf(k, t, d) === "n");
+function dayStat(k, d) {
+  const c = k.tasks.map(t => cellOf(k, t, d)).filter(Boolean);
+  return { max: c.length, a: c.filter(x => x === "a").length, w: c.filter(x => x === "w").length, und: c.filter(x => x === "n" || x === "w").length };
+}
+function weekStat(k, m) {
+  let a = 0, max = 0, w = 0;
+  for (let i = 0; i < 5; i++) { const s = dayStat(k, addDays(m, i)); a += s.a; max += s.max; w += s.w; }
+  const judgeable = TODAY >= addDays(m, 4);
+  return { a, max, w, judgeable, perfect: judgeable && max > 0 && a === max, granted: S.bonus[k.id][m] ?? null };
+}
+function kidStat(k) {
+  let a = 0, w = 0, bon = 0, empty = [];
+  for (const m of MONDAYS) { const s = weekStat(k, m); a += s.a; w += s.w; if (s.granted) bon += k.bonus; for (let i = 0; i < 5; i++) if (dayEmpty(k, addDays(m, i))) empty.push(addDays(m, i)); }
+  const tw = weekStat(k, MONDAYS[0]);
+  return { stars: a + bon, w, empty, tw, pending: MONDAYS.filter(m => { const s = weekStat(k, m); return s.judgeable && s.granted === null; }) };
+}
+const totalWaiting = () => KIDS.reduce((n, k) => n + kidStat(k).w, 0);
+
+/* ---------- shared pieces ---------- */
+const ICON = {
+  home: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>`,
+  history: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 13h2M14 13h2M8 17h2M14 17h2"/></svg>`,
+  contracts: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>`,
+  phone: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>`,
+  out: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>`,
+};
+const PAGES = [["home", "Home"], ["history", "History"], ["contracts", "Contracts"]];
+const KCOL = { olek: "#0EA5E9", sofia: "#D946EF" };
+// The page's own header. MacBook + top tabs: brand, the three sections and the account. Otherwise just the
+// page title and the waiting pill, since the sidebar or the iPhone's tab bar carries the sections.
+function appBar(f, title) {
+  const w = totalWaiting(), page = FS[f].page;
+  title = title ?? PAGES.find(p => p[0] === page)[1];
+  if (f === "mac" && NAV === "tabs")
+    return `<header class="abar"><span class="brand" style="flex:1"><i>★</i>Gwiazdki</span><nav class="navt">${PAGES.map(([id, n]) => `<button data-act="page" data-f="${f}" data-p="${id}" aria-current="${page === id ? "page" : "false"}">${n}${id === "home" && w ? `<span class="badge">${w}</span>` : ""}</button>`).join("")}</nav><span style="flex:1;display:flex;justify-content:flex-end"><button class="acct" title="Misha · Sign out">M</button></span></header>`;
+  return `<header class="abar"><h1>${title}</h1>${page === "home" ? `<span class="pill ${w ? "hot" : "cold"}">${w} waiting</span>` : ""}${f === "phone" ? `<button class="acct" title="Misha · Sign out">M</button>` : ""}</header>`;
+}
+function sidebar(f) {
+  const w = totalWaiting(), page = FS[f].page;
+  return `<aside class="side"><span class="brand"><i>★</i>Gwiazdki</span>
+    ${PAGES.map(([id, n]) => `<button class="nv" data-act="page" data-f="${f}" data-p="${id}" aria-current="${page === id ? "page" : "false"}">${ICON[id]}<span class="sp">${n}</span>${id === "home" && w ? `<span class="badge">${w}</span>` : ""}</button>`).join("")}
+    <h4>Children</h4>
+    ${KIDS.map(k => { const s = kidStat(k); return `<button class="nv" data-act="child" data-f="${f}" data-k="${k.id}"><span class="av" style="background:${KCOL[k.id]}">${k.name[0]}</span><span class="sp">${k.name}</span>${k.none ? `<span class="mut" style="font-size:12px">no Contract</span>` : s.w ? `<span class="amb">${s.w}</span>` : `<span class="mut" style="font-size:12px">${s.stars} ★</span>`}</button>`; }).join("")}
+    <div class="low"><button class="nv">${ICON.phone}<span class="sp">Connect a phone</span></button><button class="nv">${ICON.out}<span class="sp">Sign out</span></button></div></aside>`;
+}
+function tabbar(f) {
+  const w = totalWaiting(), page = FS[f].page;
+  return `<nav class="tbar">${PAGES.map(([id, n]) => `<button data-act="page" data-f="${f}" data-p="${id}" aria-current="${page === id ? "page" : "false"}">${ICON[id]}${n}${id === "home" && w ? `<span class="badge">${w}</span>` : ""}</button>`).join("")}</nav>`;
+}
+// History and Contracts, drawn roughly so the navigation can be tried. History is #52's week grid.
+function historyPage(f) {
+  const k = kid(FS[f].kid).none ? active()[0] : kid(FS[f].kid), i = FS[f].hweek, m = MONDAYS[i];
+  return `${appBar(f)}<div class="body">${tabs(f)}<div class="hnav"><button class="arrow" data-act="hweek" data-f="${f}" data-v="1" ${i >= MONDAYS.length - 1 ? "disabled" : ""} aria-label="Previous week">‹</button><span class="t"><b>${label(m)}</b><small>${range(m)} · ${k.name}</small></span><button class="arrow" data-act="hweek" data-f="${f}" data-v="-1" ${i === 0 ? "disabled" : ""} aria-label="Next week">›</button></div>
+    <div class="card wk">${grid(k, m, f === "mac" ? 44 : 38)}${weekFoot(k, m)}</div>${legend}<p class="mut" style="margin:0;font-size:12.5px">Same screen as today, reached from the navigation instead of a row under each child. No "‹ Inbox" back link.</p></div>`;
+}
+function contractsPage(f) {
+  return `${appBar(f)}<div class="body"><div class="card">${KIDS.map(k => k.none
+    ? `<div class="crow"><span class="av" style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;background:${KCOL[k.id]}">${k.name[0]}</span><b style="flex:1">${k.name}</b><span class="mut">No open Contract</span><button class="bbtn">Create</button></div>`
+    : `<div class="crow"><span class="av" style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;background:${KCOL[k.id]}">${k.name[0]}</span><b style="flex:1">${k.name}</b><span class="mut">from 1 Sep · ${pln(k.rate)} per ★ · +${k.bonus}/week</span><button class="gbtn">Open</button></div>`).join("")}</div>
+    <p class="mut" style="margin:0;font-size:12.5px">Contracts page as today (Edit, Close &amp; pay out, Start next), reached from the navigation. Its "‹ Inbox" link goes away.</p></div>`;
+}
+function summary(k, { stats = true, connect = true, banner = true } = {}) {
+  const s = kidStat(k);
+  if (k.none) return `<div class="card"><div class="sum"><div class="who"><b>${k.name}</b><small>No open Contract · <button class="link">Create one</button>${connect ? ` · <button class="link">Connect phone</button>` : ""}</small></div></div></div>`;
+  const empty = banner && s.empty.length ? `<div class="empty"><p><b>${s.empty.length} empty School days</b> in ${range(MONDAYS.find(m => m <= s.empty[0] && s.empty[0] <= addDays(m, 4)))}. Fill in what ${k.name} did.</p><button class="bbtn" data-act="goempty" data-k="${k.id}" data-m="${MONDAYS.find(m => m <= s.empty[0] && s.empty[0] <= addDays(m, 4))}">Go</button></div>` : "";
+  return `<div class="card"><div class="sum"><div class="who"><b>${k.name}</b><small>Contract from 1 Sep${connect ? ` · <button class="link">Connect phone</button>` : ""}</small></div>
+    <div class="bal"><b>${s.stars} ★</b><small>${pln(s.stars * k.rate)}</small></div></div>
+    ${stats ? `<div class="stats"><span class="stat ${s.w ? "w" : ""}"><b>${s.w}</b> waiting</span><span class="stat">This week <b>${s.tw.a}/${s.tw.max}</b> ★</span><span class="stat">Bonus <b>+${k.bonus}</b>/week</span>${s.pending.length ? `<span class="stat w"><b>${s.pending.length}</b> bonus${s.pending.length > 1 ? "es" : ""} to decide</span>` : ""}</div>` : ""}
+    ${empty}</div>`;
+}
+// Phone strips are two small cards, so the empty-days note runs full width under them.
+function banners() {
+  return active().map(k => { const e = kidStat(k).empty; if (!e.length) return ""; const m = MONDAYS.find(x => x <= e[0] && e[0] <= addDays(x, 4));
+    return `<div class="empty" style="margin:0"><p><b>${k.name}: ${e.length} empty School days</b> in ${range(m)}.</p><button class="bbtn" data-act="goempty" data-k="${k.id}" data-m="${m}">Go</button></div>`; }).join("");
+}
+function bars(k, m) {
+  let h = "";
+  for (let i = 0; i < 5; i++) {
+    const s = dayStat(k, addDays(m, i));
+    h += s.max ? `<i><span style="height:${s.a / s.max * 100}%"></span><em style="bottom:${s.a / s.max * 100}%;height:${s.w / s.max * 100}%"></em></i>` : `<i class="x"></i>`;
+  }
+  return `<span class="bars">${h}</span>`;
+}
+function bonusCtl(k, m, small) {
+  const s = weekStat(k, m);
+  if (!s.judgeable) return `<span class="chip">Bonus from Fri</span>`;
+  if (s.granted === null) return `<span class="bon hot">${small ? "" : "<span>Bonus?</span>"}<button class="gbtn" data-act="bonus" data-k="${k.id}" data-m="${m}" data-v="0">No</button><button class="bbtn" data-act="bonus" data-k="${k.id}" data-m="${m}" data-v="1">+${k.bonus} ★</button></span>`;
+  return `<button class="chip ${s.granted ? "on" : ""}" data-act="bonus" data-k="${k.id}" data-m="${m}" data-v="x" title="Change">${s.granted ? `+${k.bonus} bonus` : "No bonus"}</button>`;
+}
+function bonusChipOnly(k, m) {
+  const s = weekStat(k, m);
+  if (!s.judgeable) return `<span class="chip">from Fri</span>`;
+  if (s.granted === null) return `<span class="amb">decide</span>`;
+  return `<span class="chip ${s.granted ? "on" : ""}">${s.granted ? `+${k.bonus}` : "No"}</span>`;
+}
+function grid(k, m, c = 38) {
+  const days = [0,1,2,3,4].map(i => addDays(m, i));
+  let h = `<div class="g" style="--c:${c}px"><div></div>`;
+  days.forEach((d, i) => h += `<div class="dh">${WD[i]}<b class="${d === TODAY ? "today" : ""}">${dnum(d)}</b></div>`);
+  h += `<div class="lab">Tap a cell to set it</div>`;
+  days.forEach((d, i) => { const s = dayStat(k, d); h += `<button class="all" data-act="all" data-k="${k.id}" data-d="${d}" ${s.und ? "" : "disabled"} aria-label="Approve all of ${WD[i]} ${short(d)}">All</button>`; });
+  for (const t of k.tasks) {
+    h += `<div class="tn"><span aria-hidden="true">${t.e}</span><span>${t.name}</span></div>`;
+    for (const d of days) h += cellBtn(k, t, d, "cell");
+  }
+  h += `<div class="lab">★ per day</div>`;
+  days.forEach(d => { const s = dayStat(k, d); h += `<div class="ct">${s.max ? `${s.a}/${s.max}` : ""}</div>`; });
+  return h + `</div>`;
+}
+function cellBtn(k, t, d, cls) {
+  const v = cellOf(k, t, d);
+  if (v === null) return `<button class="${cls} off" disabled aria-label="${t.name}, ${short(d)}: nothing to set"></button>`;
+  const mark = { a: "✓", r: "✕", w: "•", n: "" }[v];
+  const e = v === "n" && dayEmpty(k, d) ? " e" : "";
+  return `<button class="${cls} ${v}${e}" data-act="cell" data-k="${k.id}" data-t="${t.id}" data-d="${d}" aria-label="${t.name}, ${short(d)}: ${{ a: "approved", r: "rejected", w: "checked off, waiting", n: "not done" }[v]}">${mark}</button>`;
+}
+function weekFoot(k, m) {
+  const s = weekStat(k, m);
+  const und = [0,1,2,3,4].reduce((n, i) => n + dayStat(k, addDays(m, i)).und, 0);
+  return `<div class="wkf"><span>From Tasks <b>${s.a}/${s.max} ★</b></span>${s.perfect ? `<span class="chip perf">Perfect week</span>` : ""}<span class="sp"></span>${m !== MONDAYS[0] && und ? `<button class="gbtn" data-act="allweek" data-k="${k.id}" data-m="${m}">All done (${und})</button>` : ""}${bonusCtl(k, m)}</div>`;
+}
+function weekCard(k, m, f, { c = 38, head = true, collapse = true } = {}) {
+  const s = weekStat(k, m);
+  return `<div class="card wk">${head ? `<div class="wkh"><div class="t"><b>${label(m)}</b><small>${range(m)}${s.w ? ` · <span class="amb">${s.w} waiting</span>` : ""}</small></div>${collapse ? `<button class="caret" data-act="fold" data-f="${f}" data-key="${k.id}/${m}" aria-label="Fold">▴</button>` : ""}</div>` : ""}${grid(k, m, c)}${weekFoot(k, m)}</div>`;
+}
+function weekRow(k, m, f) {
+  const s = weekStat(k, m);
+  return `<button class="wr" data-act="fold" data-f="${f}" data-key="${k.id}/${m}"><span class="t"><b>${label(m)}</b><small>${m === MONDAYS[1] || m === MONDAYS[0] ? range(m) : ""}</small></span>${bars(k, m)}<span class="n">${s.a}/${s.max} ★</span>${s.w ? `<span class="amb">${s.w}</span>` : ""}<span style="flex:1"></span>${bonusChipOnly(k, m)}<span class="mut">▾</span></button>`;
+}
+const isOpen = (f, key) => FS[f].open.has(key);
+function tabs(f) {
+  return `<div class="tabs">${KIDS.map(k => `<button aria-pressed="${FS[f].kid === k.id}" data-act="kid" data-f="${f}" data-k="${k.id}">${k.name}${kidStat(k).w || kidStat(k).pending.length ? `<i class="dot"></i>` : ""}</button>`).join("")}</div>`;
+}
+const legend = `<div class="legend"><span><i style="background:#DCFCE7;border-color:#86EFAC"></i>approved</span><span><i style="background:#FEE2E2;border-color:#FCA5A5"></i>rejected</span><span><i style="background:#EFF6FF;border-color:#2563EB"></i>waiting</span><span><i style="background:#fff;border-color:#E5E7EB"></i>not done</span><span><i style="background:#fff;border-color:#93C5FD;border-style:dashed"></i>empty day</span></div>`;
+const foot = `<div class="foot"><span>Older weeks and paid-out Contracts are in History</span></div>`;
+
+/* ---------- A Board ---------- */
+function column(k, f, c) {
+  if (k.none) return `<div class="col">${summary(k)}</div>`;
+  return `<div class="col">${summary(k)}${MONDAYS.map(m => isOpen(f, `${k.id}/${m}`) ? weekCard(k, m, f, { c }) : weekRow(k, m, f)).join("")}</div>`;
+}
+function renderA(f) {
+  if (f === "mac") return `${appBar(f)}<div class="body"><div class="cols">${KIDS.map(k => column(k, f, 44)).join("")}</div>${legend}${foot}</div>`;
+  return `${appBar(f)}<div class="body">${tabs(f)}${column(kid(FS[f].kid), f, 38)}${legend}${foot}</div>`;
+}
+
+/* ---------- B Family weeks ---------- */
+function renderB(f) {
+  const wide = f === "mac";
+  let h = `${appBar(f)}<div class="body"><div class="strip">${KIDS.map(k => summary(k, { stats: wide, connect: wide, banner: wide })).join("")}</div>${wide ? "" : banners()}`;
+  for (const m of MONDAYS) {
+    const open = isOpen(f, `all/${m}`);
+    if (!open) {
+      h += `<button class="wrb" data-act="fold" data-f="${f}" data-key="all/${m}"><span class="t" style="line-height:1.15"><b style="display:block;font-size:13.5px">${label(m)}</b><small class="mut">${range(m)}</small></span>${active().map(k => { const s = weekStat(k, m); return `<span class="k"><b>${k.name}</b>${bars(k, m)}<span class="n" style="font-size:12px;font-weight:700">${s.a}/${s.max}</span>${bonusChipOnly(k, m)}</span>`; }).join("")}</button>`;
+      continue;
+    }
+    h += `<section class="band"><div class="bandh"><b>${label(m)}</b><small>${range(m)}</small><span class="sp"></span><button class="caret" data-act="fold" data-f="${f}" data-key="all/${m}" aria-label="Fold">▴</button></div><div class="pair" style="grid-template-columns:repeat(${wide ? active().length : 1},minmax(0,1fr))">`;
+    for (const k of active()) {
+      const s = weekStat(k, m);
+      h += `<div class="card wk"><div class="wkh"><div class="t"><b class="kidtag">${k.name}</b><small>${s.w ? `<span class="amb">${s.w} waiting</span>` : "nothing waiting"}</small></div></div>${grid(k, m, wide ? 40 : 36)}${weekFoot(k, m)}</div>`;
+    }
+    h += `</div></section>`;
+  }
+  return h + `${legend}${foot}</div>`;
+}
+
+/* ---------- C Split ---------- */
+function weekList(f) {
+  return `<div class="card list">${MONDAYS.map(m => `<button class="li" data-act="sel" data-f="${f}" data-m="${m}" aria-current="${f === "mac" && FS[f].sel === m}"><span class="h"><b>${label(m)}</b><small>${range(m)}</small>${f === "phone" ? `<span class="mut">›</span>` : ""}</span>${active().map(k => { const s = weekStat(k, m); return `<span class="k"><b>${k.name}</b>${bars(k, m)}<span class="n">${s.a}/${s.max}</span><span style="text-align:right">${s.w ? `<span class="amb">${s.w} wait</span>` : bonusChipOnly(k, m)}</span></span>`; }).join("")}</button>`).join("")}</div>`;
+}
+function detail(f, m) {
+  const wide = f === "mac";
+  return `<div style="display:flex;flex-direction:column;gap:12px"><div class="bandh"><b style="font-size:18px">${label(m)}</b><small>${range(m)}</small></div><div class="${wide ? "pair" : "col"}" style="${wide ? `grid-template-columns:repeat(${active().length},minmax(0,1fr))` : "display:flex;flex-direction:column;gap:12px"}">${active().map(k => { const s = weekStat(k, m); return `<div class="card wk"><div class="wkh"><div class="t"><b class="kidtag">${k.name}</b><small>${s.w ? `<span class="amb">${s.w} waiting</span>` : "nothing waiting"}</small></div></div>${grid(k, m, wide ? 42 : 38)}${weekFoot(k, m)}</div>`; }).join("")}</div></div>`;
+}
+function renderC(f) {
+  if (f === "mac") return `${appBar(f)}<div class="body"><div class="strip">${KIDS.map(k => summary(k)).join("")}</div><div class="split"><div style="display:flex;flex-direction:column;gap:8px">${weekList(f)}${legend}</div>${detail(f, FS[f].sel)}</div>${foot}</div>`;
+  if (FS[f].detail) return `<header class="abar"><button class="back" data-act="back" data-f="${f}">‹ Home</button><span style="flex:1"></span><span class="pill ${totalWaiting() ? "hot" : "cold"}">${totalWaiting()} waiting</span></header><div class="body">${detail(f, FS[f].sel)}${legend}</div>`;
+  return `${appBar(f)}<div class="body"><div class="strip">${KIDS.map(k => summary(k, { stats: false, connect: false, banner: false })).join("")}</div>${banners()}${weekList(f)}${foot}</div>`;
+}
+
+/* ---------- D Task streaks ---------- */
+function streak(k, f, weeks) {
+  if (k.none) return summary(k);
+  const foc = FS[f].focus && FS[f].focus.startsWith(k.id + "/") ? FS[f].focus.split("/")[1] : null;
+  const cols = `minmax(120px,max-content) ${weeks.map(() => "max-content").join(" ")}`;
+  let h = `<div class="stt" style="grid-template-columns:${cols}"><div class="tn" style="font-size:11.5px;font-weight:600;color:#6B7280">Tap a Task</div>`;
+  weeks.forEach(m => { const s = weekStat(k, m); h += `<div class="gh ${m === MONDAYS[0] ? "cur" : ""}"><b>${label(m)}</b>${s.a}/${s.max} ★${s.w ? ` <span class="amb">${s.w}</span>` : ""}</div>`; });
+  h += `<div class="tn" style="font-size:11px;color:#6B7280"></div>`;
+  weeks.forEach(m => h += `<div class="dots" style="font-size:10px;color:#6B7280;font-weight:700">${WD.map((w, i) => `<span style="width:17px;text-align:center">${w[0]}</span>`).join("")}</div>`);
+  for (const t of k.tasks) {
+    const on = foc === t.id;
+    h += `<button class="tn ${on ? "on" : ""}" data-act="focus" data-f="${f}" data-key="${k.id}/${t.id}"><span aria-hidden="true">${t.e}</span>${t.name}</button>`;
+    weeks.forEach(m => {
+      const n = [0,1,2,3,4].filter(i => cellOf(k, t, addDays(m, i)) === "a").length, mx = [0,1,2,3,4].filter(i => cellOf(k, t, addDays(m, i)) !== null).length;
+      h += `<div class="dots ${on ? "on" : ""}">${[0,1,2,3,4].map(i => cellBtn(k, t, addDays(m, i), "dot2")).join("")}${on ? `<span class="dcount">${n}/${mx}</span>` : ""}</div>`;
+    });
+  }
+  h += `<div class="ftl">Bonus</div>`;
+  weeks.forEach(m => h += `<div class="ft">${bonusCtl(k, m, true)}</div>`);
+  h += `</div>`;
+  let fx = "";
+  if (foc) {
+    const t = k.tasks.find(x => x.id === foc);
+    const all = MONDAYS.flatMap(m => [0,1,2,3,4].map(i => cellOf(k, t, addDays(m, i)))).filter(Boolean);
+    fx = `<div class="focus"><b>${t.e} ${t.name}</b>: ${all.filter(x => x === "a").length} of ${all.length} School days approved in this Contract, ${all.filter(x => x === "r").length} rejected, ${all.filter(x => x === "w").length} waiting. Tap a dot to set that day.</div>`;
+  }
+  const dayAll = `<div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 12px;align-items:center"><span class="mut" style="font-size:12px">Approve a whole day:</span>${MONDAYS.slice(0, 2).flatMap(m => [0,1,2,3,4].map(i => addDays(m, i))).filter(d => dayStat(k, d).und && d <= TODAY && d >= START).map(d => `<button class="all" style="width:auto;padding:3px 8px" data-act="all" data-k="${k.id}" data-d="${d}">${WD[(new Date(d + "T00:00:00Z").getUTCDay() + 6) % 7]} ${dnum(d)} · ${dayStat(k, d).und}</button>`).join("") || `<span class="mut" style="font-size:12px">nothing undecided</span>`}</div>`;
+  return `<div class="card st">${summary(k).replace(/^<div class="card">/, "<div>").replace(/<\/div>$/, "</div>")}<div class="stwrap">${h}</div>${fx}${dayAll}</div>`;
+}
+function renderD(f) {
+  if (f === "mac") return `${appBar(f)}<div class="body"><div class="cols">${KIDS.map(k => streak(k, f, MONDAYS.slice(0, 3))).join("")}</div>${legend}${foot}</div>`;
+  return `${appBar(f)}<div class="body">${tabs(f)}${streak(kid(FS[f].kid), f, MONDAYS.slice(0, 4))}${legend}${foot}</div>`;
+}
+
+const VARS = {
+  A: { name: "Board", sub: "column per child", render: renderA,
+    about: "<b>A · Board.</b> One column per child on the MacBook, tabs on the iPhone. Each column opens with the balance, waiting count and bonus to decide, then the weeks newest first as History grids. This week and last week are open; older weeks are one line each.",
+    good: "Closest to History, which you like. One child at a time reads cleanly on the phone, and nothing is hidden.",
+    cost: "On the iPhone you switch tabs to see the other child's waiting Check-offs (a dot on the tab tells you)." },
+  B: { name: "Family weeks", sub: "a band per week", render: renderB,
+    about: "<b>B · Family weeks.</b> Both children stay on screen. Weeks run newest first, and each open week shows Olek's and Sofia's grids side by side (stacked on the iPhone). A folded week is one line with both children's day bars.",
+    good: "You compare the two children at a glance and handle a whole week in one place, including both bonuses.",
+    cost: "On the iPhone an open week is two grids tall, so more scrolling than A for the current week." },
+  C: { name: "Split", sub: "list + week detail", render: renderC,
+    about: "<b>C · Split.</b> A week list on the left (newest on top) with a line per child: day bars, stars, waiting or bonus state. The picked week opens on the right with both grids. On the iPhone the list is the home and a week opens as its own screen.",
+    good: "The most compact overview: every week of the Contract fits the MacBook screen without scrolling, like a mail app.",
+    cost: "On the iPhone approving takes one extra tap into a week, and the grids aren't on the home screen itself." },
+  D: { name: "Task streaks", sub: "Tasks × weeks", render: renderD,
+    about: "<b>D · Task streaks.</b> One table per child: Tasks down, recent weeks across as rows of five small dots, newest week on the left (three weeks on the MacBook, older ones scroll sideways on the iPhone). Tap a Task to highlight it across the weeks with its tally; tap a dot to set that day.",
+    good: "Best for spotting habits (\"Piano slips every Thursday\") and the most information per square inch.",
+    cost: "Dots are small targets on the iPhone, older weeks scroll sideways, and newest is on the left instead of the top." },
+};
+
+/* ---------- render + events ---------- */
+function render() {
+  document.getElementById("nav").innerHTML = [["side", "Nav 1 · Sidebar", "MacBook sidebar, iPhone tab bar"], ["tabs", "Nav 2 · Top tabs", "MacBook top tabs, iPhone tab bar"]].map(([k, n, sub]) => `<button aria-pressed="${k === NAV}" data-nav="${k}">${n}<small>${sub}</small></button>`).join("");
+  document.getElementById("data").innerHTML = [["sample", "Sample data", "Olek and Sofia, busy weeks"], ["yours", "Like yours now", "your screen on 29 Sep"]].map(([k, n, sub]) => `<button aria-pressed="${k === DATA}" data-data="${k}">${n}<small>${sub}</small></button>`).join("");
+  document.getElementById("seg").innerHTML = Object.entries(VARS).map(([k, v]) => `<button aria-pressed="${k === V}" data-v="${k}">${k} · ${v.name}<small>${v.sub}</small></button>`).join("");
+  document.getElementById("about").innerHTML = VARS[V].about;
+  document.getElementById("pros").innerHTML = `<div><b>Good at</b>${VARS[V].good}</div><div><b>Costs</b>${VARS[V].cost}</div>`;
+  for (const f of ["mac", "phone"]) {
+    const el = document.getElementById("scr-" + f), top = el.scrollTop;
+    const page = FS[f].page;
+    const content = page === "home" ? VARS[V].render(f) : page === "history" ? historyPage(f) : contractsPage(f);
+    let html = f === "mac" && NAV === "side" ? `<div class="shell">${sidebar(f)}<div style="min-width:0;display:flex;flex-direction:column">${content}</div></div>` : content;
+    if (f === "phone") html = `<div style="display:flex;flex-direction:column;flex:1">${html}<div style="flex:1"></div>${tabbar(f)}</div>`;
+    el.innerHTML = `<div class="app ${f === "mac" ? "wide" : ""}">${html}</div>`;
+    el.scrollTop = top;
+  }
+}
+function resetUi() {
+  for (const f of ["mac", "phone"]) {
+    FS[f].open = new Set([...KIDS.flatMap(k => [`${k.id}/${MONDAYS[0]}`, `${k.id}/${MONDAYS[1]}`]), `all/${MONDAYS[0]}`, `all/${MONDAYS[1]}`]);
+    FS[f].sel = MONDAYS[1]; FS[f].detail = false; FS[f].focus = null; FS[f].kid = active()[0].id; FS[f].page = "home"; FS[f].hweek = 1;
+  }
+}
+const tap = v => v === "a" ? "r" : "a";
+document.addEventListener("click", e => {
+  const nv = e.target.closest("#nav button"); if (nv) { NAV = nv.dataset.nav; render(); return; }
+  const dt = e.target.closest("#data button"); if (dt) { DATA = dt.dataset.data; KIDS = DATA === "yours" ? YOURS_KIDS : SAMPLE_KIDS; S = seed(); resetUi(); render(); return; }
+  const seg = e.target.closest("#seg button"); if (seg) { V = seg.dataset.v; render(); return; }
+  if (e.target.id === "reset") { S = seed(); resetUi(); render(); return; }
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const d = b.dataset, f = d.f;
+  switch (d.act) {
+    case "cell": S.cells[`${d.k}/${d.t}/${d.d}`] = tap(cellOf(kid(d.k), { id: d.t }, d.d)); break;
+    case "all": for (const t of kid(d.k).tasks) { const v = cellOf(kid(d.k), t, d.d); if (v === "n" || v === "w") S.cells[`${d.k}/${t.id}/${d.d}`] = "a"; } break;
+    case "allweek": for (let i = 0; i < 5; i++) { const day = addDays(d.m, i); for (const t of kid(d.k).tasks) { const v = cellOf(kid(d.k), t, day); if (v === "n" || v === "w") S.cells[`${d.k}/${t.id}/${day}`] = "a"; } } break;
+    case "bonus": if (d.v === "x") delete S.bonus[d.k][d.m]; else S.bonus[d.k][d.m] = d.v === "1"; break;
+    case "fold": FS[f].open.has(d.key) ? FS[f].open.delete(d.key) : FS[f].open.add(d.key); break;
+    case "kid": FS[f].kid = d.k; break;
+    case "sel": FS[f].sel = d.m; FS[f].detail = true; document.getElementById("scr-" + f).scrollTop = 0; break;
+    case "back": FS[f].detail = false; break;
+    case "page": FS[f].page = d.p; FS[f].detail = false; break;
+    case "hweek": FS[f].hweek += Number(d.v); break;
+    case "child": FS[f].page = "history"; FS[f].kid = d.k; for (const ff of ["mac", "phone"]) FS[ff].kid = d.k; break;
+    case "focus": FS[f].focus = FS[f].focus === d.key ? null : d.key; break;
+    case "goempty": for (const ff of ["mac", "phone"]) { FS[ff].open.add(`${d.k}/${d.m}`); FS[ff].open.add(`all/${d.m}`); FS[ff].sel = d.m; FS[ff].kid = d.k; } FS[f || "phone"].detail = true; break;
+  }
+  render();
+});
+document.addEventListener("keydown", e => {
+  if (e.target.closest("input,textarea")) return;
+  const keys = Object.keys(VARS), i = keys.indexOf(V);
+  if (e.key === "ArrowRight") { V = keys[(i + 1) % keys.length]; render(); }
+  if (e.key === "ArrowLeft") { V = keys[(i + keys.length - 1) % keys.length]; render(); }
+});
+function fit() {
+  for (const box of document.querySelectorAll(".fit")) {
+    const w = Number(box.dataset.w), h = Number(box.dataset.h), s = Math.min(1, box.clientWidth / w);
+    box.firstElementChild.style.transform = `scale(${s})`; box.style.height = h * s + "px";
+  }
+}
+new ResizeObserver(fit).observe(document.querySelector(".stage"));
+resetUi(); render(); fit();
+</script>
