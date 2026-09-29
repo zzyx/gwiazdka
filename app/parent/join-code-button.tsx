@@ -16,11 +16,15 @@ export function JoinCodeButton({
   name,
   joinUrl,
   qr,
+  label,
+  className = "flex items-center gap-1.5 self-start text-sm font-semibold text-[#2563EB] disabled:opacity-50",
 }: {
   childId: string;
   name: string;
   joinUrl: string;
   qr: React.ReactNode;
+  label?: React.ReactNode;
+  className?: string;
 }) {
   const [issued, setIssued] = useState<Issued>();
   const [open, setOpen] = useState(false);
@@ -62,9 +66,13 @@ export function JoinCodeButton({
       <button
         disabled={pending && !open}
         onClick={connect}
-        className="flex items-center gap-1.5 self-start text-sm font-semibold text-[#2563EB] disabled:opacity-50"
+        className={className}
       >
-        <Smartphone className="size-4" aria-hidden /> Connect {name}&apos;s phone
+        {label ?? (
+          <>
+            <Smartphone className="size-4" aria-hidden /> Connect {name}&apos;s phone
+          </>
+        )}
       </button>
       {open && issued && (
         <div className="fixed inset-0 z-50 flex items-end bg-[#111827]/45" onClick={() => setOpen(false)}>

@@ -1,14 +1,22 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { dayPhotoPath, signDayPhotos, type DayPhotoRow } from "./day-photos";
-import { buildChildInbox, type ChildInbox, type InboxDay } from "./inbox";
+import { buildChildBoard, type ChildBoard } from "./board";
+import { dayPhotoPath, signDayPhotos, type DayPhoto, type DayPhotoRow } from "./day-photos";
 import { warsawToday } from "./today";
 
-export type ChildSection = { id: string; name: string; contractId: string | null; inbox: ChildInbox | null };
+export type ChildColumn = {
+  id: string;
+  name: string;
+  contract: { id: string; starts_on: string } | null;
+  // Null without an open Contract.
+  board: ChildBoard | null;
+  // The child's photos in the open Contract, by day.
+  photos: Record<string, DayPhoto>;
+};
 
-// Each of the parent's children with their Inbox, read with the parent's session (RLS).
-// A child without an open Contract has no Inbox.
-export async function loadInbox(supabase: SupabaseClient, now: Date): Promise<ChildSection[]> {
+// Each of the parent's children with the Board of their open Contract, read with
+// the parent's session (RLS).
+export async function loadBoard(supabase: SupabaseClient, now: Date): Promise<ChildColumn[]> {
   const today = warsawToday(now);
   const [children, contracts, tasks, checkOffs, approvals, bonuses, photoRows] = await Promise.all([
     supabase.from("children").select("id, name").order("name"),
@@ -23,29 +31,28 @@ export async function loadInbox(supabase: SupabaseClient, now: Date): Promise<Ch
     supabase.from("day_photos").select("child_id, day, added_at"),
   ]);
   for (const r of [children, contracts, tasks, checkOffs, approvals, bonuses, photoRows]) if (r.error) throw r.error;
-  const photos = await signDayPhotos(supabase, photoRows.data as DayPhotoRow[]);
+  const signed = await signDayPhotos(supabase, photoRows.data as DayPhotoRow[]);
 
   return children.data!.map((child) => {
     const contract = contracts.data!.find((c) => c.child_id === child.id);
-    if (!contract) return { ...child, contractId: null, inbox: null };
+    if (!contract) return { ...child, contract: null, board: null, photos: {} };
     const own = tasks.data!.filter((t) => t.child_id === child.id);
     const ids = new Set(own.map((t) => t.id));
     const inRange = (r: { task_id: string; day: string }) =>
       ids.has(r.task_id) && contract.starts_on <= r.day && r.day <= contract.ends_on;
-    const inbox = buildChildInbox({
+    const board = buildChildBoard({
       today,
-      contract,
+      contract: { ...contract, closed_on: null, paid_on: null },
       tasks: own,
       checkOffs: checkOffs.data!.filter(inRange),
       approvals: approvals.data!.filter(inRange),
-      bonuses: bonuses.data!.filter((b) => b.contract_id === contract.id),
+      bonuses: bonuses.data!,
     });
-    // Each day shows the child's photo of it, if there is one.
-    const withPhoto = (d: InboxDay): InboxDay => ({ ...d, photo: photos.get(dayPhotoPath(child.id, d.day)) });
-    return {
-      ...child,
-      contractId: contract.id,
-      inbox: { ...inbox, waitingDays: inbox.waitingDays.map(withPhoto) },
-    };
+    const photos: Record<string, DayPhoto> = {};
+    for (const r of photoRows.data as DayPhotoRow[]) {
+      const photo = signed.get(dayPhotoPath(child.id, r.day));
+      if (r.child_id === child.id && photo && contract.starts_on <= r.day && r.day <= contract.ends_on) photos[r.day] = photo;
+    }
+    return { ...child, contract: { id: contract.id, starts_on: contract.starts_on }, board, photos };
   });
 }
