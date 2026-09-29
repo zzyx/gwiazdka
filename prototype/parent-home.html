@@ -91,6 +91,38 @@ details.defaults ul{margin:8px 0 0;padding-left:18px;color:var(--muted);line-hei
 .tabs button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
 .tabs button .dot{width:7px;height:7px;border-radius:50%;background:var(--ambbar)}
 
+/* navigation */
+.navt{display:flex;gap:2px;background:#ECEEF2;border-radius:10px;padding:3px;flex:none}
+.navt button{border:0;background:none;border-radius:8px;padding:6px 14px;font-weight:700;color:var(--mut);display:flex;align-items:center;gap:6px}
+.navt button[aria-current="page"]{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(16,24,40,.1)}
+.badge{background:var(--blue);color:#fff;border-radius:999px;font-size:11px;font-weight:800;padding:0 6px;line-height:17px;min-width:17px;text-align:center}
+.acct{width:32px;height:32px;border-radius:50%;background:#E0E7FF;color:#3730A3;font-weight:800;display:grid;place-items:center;border:0;flex:none}
+.brand{font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px}
+.brand i{width:26px;height:26px;border-radius:8px;background:var(--blue);color:#fff;display:grid;place-items:center;font-style:normal;font-size:14px}
+.shell{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100%}
+.side{background:#fff;border-right:1px solid var(--ln);padding:16px 12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:800px}
+.side .brand{padding:2px 8px 14px}
+.side h4{margin:14px 8px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut)}
+.nv{border:0;background:none;border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:10px;font-weight:600;text-align:left;width:100%;color:#374151}
+.nv:hover{background:var(--soft)}
+.nv[aria-current="page"]{background:var(--bluebg);color:var(--blue2)}
+.nv svg{flex:none}
+.nv .sp{flex:1}
+.nv .av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex:none}
+.side .low{margin-top:auto;display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--ln);padding-top:8px}
+.tbar{position:sticky;bottom:0;margin-top:auto;display:grid;grid-template-columns:repeat(3,1fr);background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-top:1px solid var(--ln);padding:6px 8px 26px;z-index:6}
+.tbar button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:700;color:var(--mut);position:relative;padding:4px 0}
+.tbar button[aria-current="page"]{color:var(--blue)}
+.tbar .badge{position:absolute;top:0;left:calc(50% + 6px)}
+.hnav{display:flex;align-items:center;gap:8px}
+.hnav .t{flex:1;text-align:center;line-height:1.15}
+.hnav .t b{display:block}
+.hnav .t small{color:var(--mut);font-size:12px}
+.arrow{width:34px;height:34px;border-radius:50%;border:1px solid var(--ln);background:#fff;font-size:17px}
+.arrow[disabled]{opacity:.35}
+.crow{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--soft);font-size:13.5px}
+.crow:first-child{border-top:0}
+
 /* child summary */
 .sum{padding:12px 14px;display:flex;align-items:center;gap:12px}
 .sum .who{flex:1;min-width:0}
@@ -225,11 +257,12 @@ details.defaults ul{margin:8px 0 0;padding-left:18px;color:var(--muted);line-hei
   <div class="top">
     <div class="intro">
       <h1>Parent home: four ways to see the week</h1>
-      <p>Each variant is drawn on a MacBook screen and an iPhone from the same sample data, so a tap on one shows on the other. Weeks read newest first, cells work like History (tap to set, <b>All</b> per day), and the Weekly bonus is decided right on the week. Olek has last week's bonus to decide and three days with Check-offs waiting; Sofia's Contract has four empty days in its first week. <b>Like yours now</b> swaps in what your screen showed on 29 Sep: Olek without a Contract, Sofia with four bonuses to decide.</p>
+      <p>Each variant is drawn on a MacBook screen and an iPhone from the same sample data, so a tap on one shows on the other. Weeks read newest first, cells work like History (tap to set, <b>All</b> per day), and the Weekly bonus is decided right on the week. Olek has last week's bonus to decide and three days with Check-offs waiting; Sofia's Contract has four empty days in its first week. <b>Like yours now</b> swaps in what your screen showed on 29 Sep: Olek without a Contract, Sofia with four bonuses to decide. The navigation switch tries two ways to move between Home, History and Contracts; tap the tabs inside the screens.</p>
     </div>
     <div class="pick">
       <div class="seg" role="group" aria-label="Variant" id="seg"></div>
       <div class="seg two" role="group" aria-label="Data" id="data"></div>
+      <div class="seg two" role="group" aria-label="Navigation" id="nav"></div>
       <p class="about" id="about"></p>
       <div class="pros" id="pros"></div>
       <div class="row2"><button class="ghost" id="reset">Reset sample data</button><span class="mut" style="color:var(--muted);font-size:13px">Keys ← → switch variants.</span></div>
@@ -247,6 +280,7 @@ details.defaults ul{margin:8px 0 0;padding-left:18px;color:var(--muted);line-hei
       <li>The Weekly bonus is decided on the week itself (No / +3 from Friday), replacing the separate week cards and the "All weeks and bonuses" fold.</li>
       <li>Rules unchanged: tap cycles empty or waiting → ✓, ✓ → ✕, ✕ → ✓; <b>All</b> never overturns a ✕; future days can't be set.</li>
       <li>/history stays for paid-out Contracts and weeks before this Contract. Contracts and Connect phone stay one tap away.</li>
+      <li>Navigation: Home, History and Contracts become sections. On the iPhone a bottom tab bar with the waiting count on Home. On the MacBook either a sidebar (Nav 1, with each child and their waiting count, Connect a phone and Sign out) or top tabs (Nav 2). The "‹ Inbox" back links and the History row under each child go away.</li>
       <li>The day photo shows as a small thumbnail above the day's column (left out of this prototype).</li>
     </ul>
   </details>
@@ -280,7 +314,7 @@ const YOURS_KIDS = [
   { id: "sofia", name: "Sofia", rate: 300, bonus: 3, tasks: [
     { id: "hw", name: "Homework", e: "📚" }, { id: "rd", name: "Reading", e: "📖" }, { id: "rm", name: "Tidy room", e: "🧹" } ] },
 ];
-let DATA = "sample", KIDS = SAMPLE_KIDS;
+let DATA = "sample", KIDS = SAMPLE_KIDS, NAV = "side";
 const active = () => KIDS.filter(k => !k.none);
 function seedYours() {
   const st = { cells: {}, bonus: { olek: {}, sofia: {} } };
@@ -335,9 +369,47 @@ function kidStat(k) {
 const totalWaiting = () => KIDS.reduce((n, k) => n + kidStat(k).w, 0);
 
 /* ---------- shared pieces ---------- */
-function appBar(f) {
-  const w = totalWaiting();
-  return `<header class="abar"><h1>${f === "mac" ? "Gwiazdki" : "Home"}</h1><a>History</a><a>Contracts</a><span class="pill ${w ? "hot" : "cold"}">${w} waiting</span></header>`;
+const ICON = {
+  home: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>`,
+  history: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 13h2M14 13h2M8 17h2M14 17h2"/></svg>`,
+  contracts: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>`,
+  phone: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>`,
+  out: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>`,
+};
+const PAGES = [["home", "Home"], ["history", "History"], ["contracts", "Contracts"]];
+const KCOL = { olek: "#0EA5E9", sofia: "#D946EF" };
+// The page's own header. MacBook + top tabs: brand, the three sections and the account. Otherwise just the
+// page title and the waiting pill, since the sidebar or the iPhone's tab bar carries the sections.
+function appBar(f, title) {
+  const w = totalWaiting(), page = FS[f].page;
+  title = title ?? PAGES.find(p => p[0] === page)[1];
+  if (f === "mac" && NAV === "tabs")
+    return `<header class="abar"><span class="brand" style="flex:1"><i>★</i>Gwiazdki</span><nav class="navt">${PAGES.map(([id, n]) => `<button data-act="page" data-f="${f}" data-p="${id}" aria-current="${page === id ? "page" : "false"}">${n}${id === "home" && w ? `<span class="badge">${w}</span>` : ""}</button>`).join("")}</nav><span style="flex:1;display:flex;justify-content:flex-end"><button class="acct" title="Misha · Sign out">M</button></span></header>`;
+  return `<header class="abar"><h1>${title}</h1>${page === "home" ? `<span class="pill ${w ? "hot" : "cold"}">${w} waiting</span>` : ""}${f === "phone" ? `<button class="acct" title="Misha · Sign out">M</button>` : ""}</header>`;
+}
+function sidebar(f) {
+  const w = totalWaiting(), page = FS[f].page;
+  return `<aside class="side"><span class="brand"><i>★</i>Gwiazdki</span>
+    ${PAGES.map(([id, n]) => `<button class="nv" data-act="page" data-f="${f}" data-p="${id}" aria-current="${page === id ? "page" : "false"}">${ICON[id]}<span class="sp">${n}</span>${id === "home" && w ? `<span class="badge">${w}</span>` : ""}</button>`).join("")}
+    <h4>Children</h4>
+    ${KIDS.map(k => { const s = kidStat(k); return `<button class="nv" data-act="child" data-f="${f}" data-k="${k.id}"><span class="av" style="background:${KCOL[k.id]}">${k.name[0]}</span><span class="sp">${k.name}</span>${k.none ? `<span class="mut" style="font-size:12px">no Contract</span>` : s.w ? `<span class="amb">${s.w}</span>` : `<span class="mut" style="font-size:12px">${s.stars} ★</span>`}</button>`; }).join("")}
+    <div class="low"><button class="nv">${ICON.phone}<span class="sp">Connect a phone</span></button><button class="nv">${ICON.out}<span class="sp">Sign out</span></button></div></aside>`;
+}
+function tabbar(f) {
+  const w = totalWaiting(), page = FS[f].page;
+  return `<nav class="tbar">${PAGES.map(([id, n]) => `<button data-act="page" data-f="${f}" data-p="${id}" aria-current="${page === id ? "page" : "false"}">${ICON[id]}${n}${id === "home" && w ? `<span class="badge">${w}</span>` : ""}</button>`).join("")}</nav>`;
+}
+// History and Contracts, drawn roughly so the navigation can be tried. History is #52's week grid.
+function historyPage(f) {
+  const k = kid(FS[f].kid).none ? active()[0] : kid(FS[f].kid), i = FS[f].hweek, m = MONDAYS[i];
+  return `${appBar(f)}<div class="body">${tabs(f)}<div class="hnav"><button class="arrow" data-act="hweek" data-f="${f}" data-v="1" ${i >= MONDAYS.length - 1 ? "disabled" : ""} aria-label="Previous week">‹</button><span class="t"><b>${label(m)}</b><small>${range(m)} · ${k.name}</small></span><button class="arrow" data-act="hweek" data-f="${f}" data-v="-1" ${i === 0 ? "disabled" : ""} aria-label="Next week">›</button></div>
+    <div class="card wk">${grid(k, m, f === "mac" ? 44 : 38)}${weekFoot(k, m)}</div>${legend}<p class="mut" style="margin:0;font-size:12.5px">Same screen as today, reached from the navigation instead of a row under each child. No "‹ Inbox" back link.</p></div>`;
+}
+function contractsPage(f) {
+  return `${appBar(f)}<div class="body"><div class="card">${KIDS.map(k => k.none
+    ? `<div class="crow"><span class="av" style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;background:${KCOL[k.id]}">${k.name[0]}</span><b style="flex:1">${k.name}</b><span class="mut">No open Contract</span><button class="bbtn">Create</button></div>`
+    : `<div class="crow"><span class="av" style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;background:${KCOL[k.id]}">${k.name[0]}</span><b style="flex:1">${k.name}</b><span class="mut">from 1 Sep · ${pln(k.rate)} per ★ · +${k.bonus}/week</span><button class="gbtn">Open</button></div>`).join("")}</div>
+    <p class="mut" style="margin:0;font-size:12.5px">Contracts page as today (Edit, Close &amp; pay out, Start next), reached from the navigation. Its "‹ Inbox" link goes away.</p></div>`;
 }
 function summary(k, { stats = true, connect = true, banner = true } = {}) {
   const s = kidStat(k);
@@ -412,7 +484,7 @@ function tabs(f) {
   return `<div class="tabs">${KIDS.map(k => `<button aria-pressed="${FS[f].kid === k.id}" data-act="kid" data-f="${f}" data-k="${k.id}">${k.name}${kidStat(k).w || kidStat(k).pending.length ? `<i class="dot"></i>` : ""}</button>`).join("")}</div>`;
 }
 const legend = `<div class="legend"><span><i style="background:#DCFCE7;border-color:#86EFAC"></i>approved</span><span><i style="background:#FEE2E2;border-color:#FCA5A5"></i>rejected</span><span><i style="background:#EFF6FF;border-color:#2563EB"></i>waiting</span><span><i style="background:#fff;border-color:#E5E7EB"></i>not done</span><span><i style="background:#fff;border-color:#93C5FD;border-style:dashed"></i>empty day</span></div>`;
-const foot = `<div class="foot"><span>Older Contracts in History</span><button>Sign out</button></div>`;
+const foot = `<div class="foot"><span>Older weeks and paid-out Contracts are in History</span></div>`;
 
 /* ---------- A Board ---------- */
 function column(k, f, c) {
@@ -513,24 +585,30 @@ const VARS = {
 
 /* ---------- render + events ---------- */
 function render() {
+  document.getElementById("nav").innerHTML = [["side", "Nav 1 · Sidebar", "MacBook sidebar, iPhone tab bar"], ["tabs", "Nav 2 · Top tabs", "MacBook top tabs, iPhone tab bar"]].map(([k, n, sub]) => `<button aria-pressed="${k === NAV}" data-nav="${k}">${n}<small>${sub}</small></button>`).join("");
   document.getElementById("data").innerHTML = [["sample", "Sample data", "Olek and Sofia, busy weeks"], ["yours", "Like yours now", "your screen on 29 Sep"]].map(([k, n, sub]) => `<button aria-pressed="${k === DATA}" data-data="${k}">${n}<small>${sub}</small></button>`).join("");
   document.getElementById("seg").innerHTML = Object.entries(VARS).map(([k, v]) => `<button aria-pressed="${k === V}" data-v="${k}">${k} · ${v.name}<small>${v.sub}</small></button>`).join("");
   document.getElementById("about").innerHTML = VARS[V].about;
   document.getElementById("pros").innerHTML = `<div><b>Good at</b>${VARS[V].good}</div><div><b>Costs</b>${VARS[V].cost}</div>`;
   for (const f of ["mac", "phone"]) {
     const el = document.getElementById("scr-" + f), top = el.scrollTop;
-    el.innerHTML = `<div class="app ${f === "mac" ? "wide" : ""}">${VARS[V].render(f)}</div>`;
+    const page = FS[f].page;
+    const content = page === "home" ? VARS[V].render(f) : page === "history" ? historyPage(f) : contractsPage(f);
+    let html = f === "mac" && NAV === "side" ? `<div class="shell">${sidebar(f)}<div style="min-width:0;display:flex;flex-direction:column">${content}</div></div>` : content;
+    if (f === "phone") html = `<div style="display:flex;flex-direction:column;flex:1">${html}<div style="flex:1"></div>${tabbar(f)}</div>`;
+    el.innerHTML = `<div class="app ${f === "mac" ? "wide" : ""}">${html}</div>`;
     el.scrollTop = top;
   }
 }
 function resetUi() {
   for (const f of ["mac", "phone"]) {
     FS[f].open = new Set([...KIDS.flatMap(k => [`${k.id}/${MONDAYS[0]}`, `${k.id}/${MONDAYS[1]}`]), `all/${MONDAYS[0]}`, `all/${MONDAYS[1]}`]);
-    FS[f].sel = MONDAYS[1]; FS[f].detail = false; FS[f].focus = null; FS[f].kid = active()[0].id;
+    FS[f].sel = MONDAYS[1]; FS[f].detail = false; FS[f].focus = null; FS[f].kid = active()[0].id; FS[f].page = "home"; FS[f].hweek = 1;
   }
 }
 const tap = v => v === "a" ? "r" : "a";
 document.addEventListener("click", e => {
+  const nv = e.target.closest("#nav button"); if (nv) { NAV = nv.dataset.nav; render(); return; }
   const dt = e.target.closest("#data button"); if (dt) { DATA = dt.dataset.data; KIDS = DATA === "yours" ? YOURS_KIDS : SAMPLE_KIDS; S = seed(); resetUi(); render(); return; }
   const seg = e.target.closest("#seg button"); if (seg) { V = seg.dataset.v; render(); return; }
   if (e.target.id === "reset") { S = seed(); resetUi(); render(); return; }
@@ -545,6 +623,9 @@ document.addEventListener("click", e => {
     case "kid": FS[f].kid = d.k; break;
     case "sel": FS[f].sel = d.m; FS[f].detail = true; document.getElementById("scr-" + f).scrollTop = 0; break;
     case "back": FS[f].detail = false; break;
+    case "page": FS[f].page = d.p; FS[f].detail = false; break;
+    case "hweek": FS[f].hweek += Number(d.v); break;
+    case "child": FS[f].page = "history"; FS[f].kid = d.k; for (const ff of ["mac", "phone"]) FS[ff].kid = d.k; break;
     case "focus": FS[f].focus = FS[f].focus === d.key ? null : d.key; break;
     case "goempty": for (const ff of ["mac", "phone"]) { FS[ff].open.add(`${d.k}/${d.m}`); FS[ff].open.add(`all/${d.m}`); FS[ff].sel = d.m; FS[ff].kid = d.k; } FS[f || "phone"].detail = true; break;
   }
