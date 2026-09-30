@@ -7,7 +7,11 @@ export const DAY_PHOTOS_BUCKET = "day-photos";
 
 export const dayPhotoPath = (childId: string, day: string) => `${childId}/${day}.jpg`;
 
-// A photo as screens show it: a short-lived signed URL and when it was added (HH:MM, Warsaw).
+// How long a signed photo link works: about 6 months, so an app left open in
+// the background never loses its photos. Removing the photo ends the link sooner.
+const SIGNED_URL_SECONDS = 183 * 24 * 60 * 60;
+
+// A photo as screens show it: a signed URL and when it was added (HH:MM, Warsaw).
 export type DayPhoto = { url: string; addedAt: string };
 
 export type DayPhotoRow = { child_id: string; day: string; added_at: string };
@@ -18,7 +22,7 @@ export async function signDayPhotos(supabase: SupabaseClient, rows: DayPhotoRow[
   const photos = new Map<string, DayPhoto>();
   if (rows.length === 0) return photos;
   const paths = rows.map((r) => dayPhotoPath(r.child_id, r.day));
-  const { data, error } = await supabase.storage.from(DAY_PHOTOS_BUCKET).createSignedUrls(paths, 60 * 60);
+  const { data, error } = await supabase.storage.from(DAY_PHOTOS_BUCKET).createSignedUrls(paths, SIGNED_URL_SECONDS);
   if (error) throw error;
   data.forEach((signed, i) => {
     if (signed.signedUrl) photos.set(paths[i], { url: signed.signedUrl, addedAt: warsawTime(rows[i].added_at) });
