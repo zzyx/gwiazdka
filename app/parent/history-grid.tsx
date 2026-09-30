@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useOptimistic, useTransition } from "react";
+import { Fragment, useOptimistic, useTransition, type ReactNode } from "react";
 import type { DayPhoto } from "@/lib/day-photos";
 import { dayCount, tapped, type HistoryDay, type HistoryWeek } from "@/lib/history";
 import { taskEmoji } from "@/lib/task-icons";
@@ -29,11 +29,20 @@ export function HistoryGrid({
   week,
   photos,
   today,
+  bonus,
+  allDone = true,
+  bare = false,
 }: {
   childName: string;
   week: HistoryWeek;
   photos: Record<string, DayPhoto>;
   today: string;
+  // The Home decides the Weekly bonus in the footer; History only shows it.
+  bonus?: ReactNode;
+  // "All done this week", left out of the Home's current week.
+  allDone?: boolean;
+  // Inside a card that is already drawn.
+  bare?: boolean;
 }) {
   const [, start] = useTransition();
   const [changes, change] = useOptimistic<Change, Change>({}, (now, next) => ({ ...now, ...next }));
@@ -67,7 +76,7 @@ export function HistoryGrid({
   const hasPhotos = days.some((d) => photos[d.day]);
 
   return (
-    <article className="overflow-hidden rounded-xl bg-white shadow-sm">
+    <article className={bare ? "border-t border-[#E5E7EB]" : "overflow-hidden rounded-xl bg-white shadow-sm"}>
       <div className="grid grid-cols-[minmax(0,1fr)_repeat(5,44px)] items-center gap-x-1 gap-y-1.5 py-3 pr-2.5 pl-3">
         <div />
         {days.map((d, i) => (
@@ -149,30 +158,35 @@ export function HistoryGrid({
           </div>
         ))}
       </div>
-      <footer className="flex items-center justify-between gap-3 border-t border-[#E5E7EB] px-4 py-3 text-sm">
+      <footer className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-[#E5E7EB] px-4 py-3 text-sm">
         <p className="text-[#6B7280]">
           From Tasks <b className="text-[#1F2430]">{got}/{max} ★</b>
-          {week.bonus && (
+          {week.bonus && !bonus && (
             <>
               <br />
               Weekly bonus: {bonusLine(week)}
             </>
           )}
         </p>
-        {weekUndecided.length > 0 && (
+        {week.bonus?.judgeable && max > 0 && got === max && (
+          <span className="rounded-full bg-[#DCFCE7] px-2 py-0.5 text-xs font-bold text-[#15803D]">Perfect week</span>
+        )}
+        <span className="flex-1" />
+        {allDone && weekUndecided.length > 0 && (
           <button
             onClick={() => approveAll(weekUndecided)}
             className="rounded-lg bg-[#2563EB] px-3 py-2 text-sm font-bold whitespace-nowrap text-white active:bg-[#1D4ED8]"
           >
-            All done this week ({weekUndecided.length})
+            All done{bonus ? "" : " this week"} ({weekUndecided.length})
           </button>
         )}
+        {bonus && <span className="flex">{bonus}</span>}
       </footer>
     </article>
   );
 }
 
-// Shown only: the Weekly bonus is still decided on the Inbox week cards.
+// Shown only: the Weekly bonus is decided on the Home.
 function bonusLine({ bonus, contracts }: HistoryWeek) {
   if (!bonus) return "";
   if (bonus.granted === true) return `granted +${bonus.size} ★`;

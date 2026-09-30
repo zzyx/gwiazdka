@@ -19,27 +19,7 @@ type Props = {
   waitingIds: string[];
 };
 
-// The photo row on a day card: a thumbnail that opens the photo full screen.
-export function PhotoRow(props: Props) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-3 border-b border-[#F0F1F3] px-4 py-2.5 text-left"
-      >
-        <Thumb url={props.photo.url} className="h-13.5 w-18 rounded-lg" />
-        <span className="text-[13px] leading-snug text-[#6B7280]">
-          <b className="block text-sm text-[#1F2430]">Photo</b>
-          Added {props.photo.addedAt}. Tap to open.
-        </span>
-      </button>
-      {open && <Viewer {...props} onClose={() => setOpen(false)} />}
-    </>
-  );
-}
-
-// The tiny thumbnail on a History day.
+// The tiny thumbnail on a day of a week grid.
 export function PhotoThumb({ className = "", ...props }: Props & { className?: string }) {
   const [open, setOpen] = useState(false);
   return (

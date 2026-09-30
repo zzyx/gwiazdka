@@ -8,7 +8,7 @@ import { formatPln, starsWord, warsawToday } from "@/lib/today";
 import { approveAll } from "./actions";
 import { closeContract, createContract, updateContract } from "./contract-actions";
 import { ContractForm } from "./contract-form";
-import { figtree } from "./font";
+import { PageHeader, ParentShell } from "./shell";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -44,36 +44,33 @@ export async function ContractsHome({
   const child = children.find((c) => c.id === childId) ?? children[0];
 
   return (
-    <main className={`${figtree.className} mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 bg-[#F6F7F9] p-4 pt-[max(1rem,env(safe-area-inset-top))] text-[#1F2430]`}>
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Contracts</h1>
-        <Link href="/" className="text-sm text-[#2563EB]">
-          Inbox
-        </Link>
-      </header>
-      {!child ? (
-        <p className="rounded-xl bg-white p-4 text-sm text-[#6B7280]">No children yet.</p>
-      ) : (
-        <>
-          <nav className="flex gap-2 overflow-x-auto">
-            {children.map((c) => (
-              <Link
-                key={c.id}
-                href={href(c.id)}
-                aria-current={c.id === child.id ? "page" : undefined}
-                className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${c.id === child.id ? "bg-[#1F2430] text-white" : "bg-white text-[#1F2430]"}`}
-              >
-                {c.name}
-                <span className={`size-2 rounded-full ${dotColor(c, today)}`} aria-hidden />
-              </Link>
-            ))}
-          </nav>
-          {child.open ? <ContractCard child={child} open={child.open} today={today} /> : <NoContract child={child} />}
-          <PastContracts child={child} />
-          {sheet && <SheetFor child={child} sheet={sheet} today={today} paidContractId={paidContractId} />}
-        </>
-      )}
-    </main>
+    <ParentShell section="contracts">
+      <main className="mx-auto flex w-full max-w-lg flex-col gap-4 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
+        <PageHeader title="Contracts" />
+        {!child ? (
+          <p className="rounded-xl bg-white p-4 text-sm text-[#6B7280]">No children yet.</p>
+        ) : (
+          <>
+            <nav className="flex gap-2 overflow-x-auto">
+              {children.map((c) => (
+                <Link
+                  key={c.id}
+                  href={href(c.id)}
+                  aria-current={c.id === child.id ? "page" : undefined}
+                  className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${c.id === child.id ? "bg-[#1F2430] text-white" : "bg-white text-[#1F2430]"}`}
+                >
+                  {c.name}
+                  <span className={`size-2 rounded-full ${dotColor(c, today)}`} aria-hidden />
+                </Link>
+              ))}
+            </nav>
+            {child.open ? <ContractCard child={child} open={child.open} today={today} /> : <NoContract child={child} />}
+            <PastContracts child={child} />
+            {sheet && <SheetFor child={child} sheet={sheet} today={today} paidContractId={paidContractId} />}
+          </>
+        )}
+      </main>
+    </ParentShell>
   );
 }
 

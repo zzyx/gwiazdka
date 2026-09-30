@@ -4,8 +4,8 @@ import { loadHistory } from "@/lib/parent-history";
 import { createClient } from "@/lib/supabase/server";
 import { warsawToday } from "@/lib/today";
 import { mondayOf, weekRange } from "@/lib/weeks";
-import { figtree } from "./font";
 import { HistoryGrid } from "./history-grid";
+import { PageHeader, ParentShell } from "./shell";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const short = (day: string) => `${Number(day.slice(8, 10))} ${MONTHS[Number(day.slice(5, 7)) - 1]}`;
@@ -25,19 +25,16 @@ export async function HistoryHome({ childId, week }: { childId?: string; week?: 
   const history = await loadHistory(supabase, now, childId, week);
 
   return (
-    <main className={`${figtree.className} mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 bg-[#F6F7F9] p-4 pt-[max(1rem,env(safe-area-inset-top))] text-[#1F2430]`}>
-      <header className="flex items-center justify-between">
-        <Link href="/" className="font-semibold text-[#2563EB]">
-          ‹ Inbox
-        </Link>
-        <h1 className="text-xl font-bold">History</h1>
-      </header>
-      {!history ? (
-        <p className="rounded-xl bg-white p-4 text-sm text-[#6B7280]">No children yet.</p>
-      ) : (
-        <HistoryWeekView {...history} today={today} />
-      )}
-    </main>
+    <ParentShell section="history" historyChildId={history?.child.id}>
+      <main className="mx-auto flex w-full max-w-lg flex-col gap-4 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
+        <PageHeader title="History" />
+        {!history ? (
+          <p className="rounded-xl bg-white p-4 text-sm text-[#6B7280]">No children yet.</p>
+        ) : (
+          <HistoryWeekView {...history} today={today} />
+        )}
+      </main>
+    </ParentShell>
   );
 }
 
