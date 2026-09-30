@@ -132,7 +132,7 @@ What writes where (all in server actions):
 | `app/join/actions.ts` | `joinWithCode` | RPC `redeem_join_code`, Auth admin (secret key), `children.user_id` |
 | `app/sign-in/actions.ts` | `signIn`, `signOut` | Auth |
 
-The schema is the migrations in `supabase/migrations/`, in date order. RLS helpers live in the `private` schema (for example `private.child_may_check_off`, `private.parent_may_decide`), and the pgTAP tests in `supabase/tests/database/` pin down what each role may do.
+The schema is the migrations in `supabase/migrations/`, in date order; [`database.md`](database.md) explains every table, the RLS rules and how to connect. RLS helpers live in the `private` schema (for example `private.child_may_check_off`, `private.parent_may_decide`), and the pgTAP tests in `supabase/tests/database/` pin down what each role may do.
 
 ## Dependencies
 
