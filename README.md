@@ -5,6 +5,7 @@ A family motivation PWA. See `CLAUDE.md` and `CONTEXT.md`.
 ## Handbook
 
 - [Architecture](docs/architecture.md): what the app is made of, how routes, `lib/` and Supabase connect, dependencies, services and the deploy flow.
+- [Database](docs/database.md): connecting to each database, what every table means, who sees what (RLS), ready-to-paste queries, and how migrations and the seed fit together.
 
 ## Develop
 
