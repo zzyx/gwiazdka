@@ -167,7 +167,7 @@ Names only; values live in the services, never in the repo.
 | **Vercel** | Builds a preview per PR and deploys production from `main` through its GitHub integration (no workflow file). Env vars per environment: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`. Preview points at `gwiazdka-preview`, Production at `Gwiazdki`. Previews are behind Vercel login. |
 | **Supabase** | Two hosted projects: `Gwiazdki` (production) and `gwiazdka-preview`. Each has its Auth users, Postgres and the `day-photos` bucket. The real family's accounts exist only in production. |
 | **GitHub** | The code, issues (the wayfinder maps), and Actions. Secrets: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROD_PROJECT_REF`, `SUPABASE_PROD_DB_PASSWORD`, `SUPABASE_PREVIEW_PROJECT_REF`, `SUPABASE_PREVIEW_DB_PASSWORD`. |
-| **Local** | `.env.local` (git-ignored), copied from `.env.example`, with the same three variable names pointing at the local stack. |
+| **Local** | `.env.local` (git-ignored), written by one `supabase status -o env` command (see [`local-setup-macos.md`](local-setup-macos.md#2-clone-and-start)), with the same three variable names pointing at the local stack. |
 
 ## Deploy flow
 
